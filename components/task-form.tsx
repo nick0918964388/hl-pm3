@@ -16,9 +16,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
-import type { Task, Turbine } from "@/lib/types"
+import type { Task, Turbine, Project } from "@/lib/types"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { TaskTypeSettings, type TaskType } from "@/components/task-type-settings"
+import { fetchProject } from "@/lib/api"
 
 const taskSchema = z.object({
   name: z.string().min(1, { message: "任務名稱不能為空" }),
@@ -64,6 +65,29 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
   const [taskTypes, setTaskTypes] = useState<TaskType[]>([...defaultTaskTypes])
   const [showNewTaskForm, setShowNewTaskForm] = useState(false)
   const [showTaskTypeSettings, setShowTaskTypeSettings] = useState(false)
+  const [projectStartDate, setProjectStartDate] = useState<Date | null>(null)
+
+  // 載入專案資訊以獲取開始日期
+  useEffect(() => {
+    const loadProjectInfo = async () => {
+      try {
+        const projectInfo = await fetchProject(projectId)
+        if (projectInfo && projectInfo.startDate) {
+          setProjectStartDate(new Date(projectInfo.startDate))
+        } else {
+          console.log("無法獲取專案開始日期，使用當前日期作為默認值")
+          // 如果無法獲取專案開始日期，使用當前日期作為默認值
+          setProjectStartDate(new Date())
+        }
+      } catch (error) {
+        console.error("無法載入專案資訊:", error)
+        // 發生錯誤時也設置默認日期
+        setProjectStartDate(new Date())
+      }
+    }
+    
+    loadProjectInfo()
+  }, [projectId])
 
   // 載入自定義任務類型
   useEffect(() => {
@@ -106,21 +130,29 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
         },
   })
 
-  // 監聽開始日期變化，自動更新結束日期
+  // 當專案開始日期載入後，如果是新任務則將開始日期更新為專案開始日期
   useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === "startDate" && value.startDate) {
-        form.setValue("endDate", value.startDate as Date)
-      }
-    })
-    return () => subscription.unsubscribe()
-  }, [form])
+    if (projectStartDate && !task) {
+      form.setValue("startDate", projectStartDate)
+    }
+  }, [projectStartDate, form, task])
 
   const handleFormSubmit = (data: z.infer<typeof taskSchema>) => {
+    // 獲取結束日期
+    const endDate = format(data.endDate, "yyyy-MM-dd");
+    
+    // 如果有專案開始日期，使用專案開始日期作為任務開始日期
+    // 否則使用結束日期作為開始日期
+    const startDate = projectStartDate 
+      ? format(projectStartDate, "yyyy-MM-dd")
+      : endDate;
+    
     onSubmit({
       ...data,
       projectId,
       id: task?.id || `task-${Date.now()}`,
+      startDate: startDate,
+      endDate: endDate,
     })
   }
 
@@ -228,44 +260,24 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
+          {/* 開始日期欄位隱藏，但保留其功能性 */}
           <FormField
             control={form.control}
             name="startDate"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>開始日期</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                      >
-                        {field.value ? format(field.value, "yyyy-MM-dd", { locale: zhTW }) : <span>選擇日期</span>}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={(date) => {
-                        if (date) {
-                          field.onChange(date)
-                          // 自動關閉日期選擇器
-                          document.body.click()
-                        }
-                      }}
-                      disabled={(date) => date < new Date("2000-01-01")}
-                      initialFocus
-                      locale={zhTW}
+              <div className="hidden">
+                <FormItem className="flex flex-col">
+                  <FormLabel>開始日期</FormLabel>
+                  <FormControl>
+                    <input
+                      type="hidden"
+                      {...field}
+                      value={field.value ? field.value.toISOString() : ""}
                     />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
+                  </FormControl>
+                </FormItem>
+              </div>
             )}
           />
 
@@ -274,7 +286,7 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
             name="endDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>結束日期</FormLabel>
+                <FormLabel className="font-bold">完工日期</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -294,14 +306,13 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
                       onSelect={(date) => {
                         if (date) {
                           field.onChange(date)
+                          // 自動設置開始日期與結束日期相同
+                          form.setValue("startDate", date)
                           // 自動關閉日期選擇器
                           document.body.click()
                         }
                       }}
-                      disabled={(date) =>
-                        date < new Date("2000-01-01") ||
-                        (form.getValues("startDate") && date < form.getValues("startDate"))
-                      }
+                      disabled={(date) => date < new Date("2000-01-01")}
                       initialFocus
                       locale={zhTW}
                     />
@@ -358,7 +369,7 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
                             />
                           </FormControl>
                           <FormLabel className="text-sm font-normal">
-                            {turbine.code} ({turbine.name})
+                            {turbine.code} ({turbine.displayName})
                           </FormLabel>
                         </FormItem>
                       )

@@ -11,10 +11,17 @@ interface ProjectSelectorProps {
 }
 
 export function ProjectSelector({ projects, selectedProject, onProjectChange }: ProjectSelectorProps) {
+  // 如果 selectedProject 是 null 且有可用項目，使用第一個項目的 ID
+  const effectiveValue = selectedProject || (projects.length > 0 ? projects[0].id : "")
+  
   return (
     <div className="flex items-center gap-2">
       <Building2 className="h-4 w-4 text-muted-foreground" />
-      <Select value={selectedProject || ""} onValueChange={onProjectChange}>
+      <Select 
+        value={effectiveValue} 
+        onValueChange={onProjectChange}
+        disabled={projects.length === 0}
+      >
         <SelectTrigger className="w-[200px] h-9 bg-white">
           <SelectValue placeholder="選擇專案" />
         </SelectTrigger>

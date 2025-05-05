@@ -1,3 +1,5 @@
+import { WindFarmDashboard } from "@/components/wind-farm-dashboard"
+
 export default function MonitoringPage() {
   return (
     <main className="container mx-auto py-8 px-4">

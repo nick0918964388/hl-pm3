@@ -320,16 +320,15 @@ export function TaskManagement({ project }: TaskManagementProps) {
                   {getStatusBadge(task.status)}
                 </div>
                 <CardDescription>
-                  {format(new Date(task.startDate), "yyyy/MM/dd", { locale: zhTW })} -{" "}
-                  {format(new Date(task.endDate), "yyyy/MM/dd", { locale: zhTW })}
+                  完工日期: {format(new Date(task.endDate), "yyyy/MM/dd", { locale: zhTW })}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-2">{getTypeBadge(task.type)}</div>
                 <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{task.description}</p>
                 <div className="text-xs text-muted-foreground">
-                  涉及風機：{task.turbineIds.length} 台
-                  {task.turbineIds.length > 0 && (
+                  涉及風機：{task.turbineIds?.length || 0} 台
+                  {task.turbineIds && task.turbineIds.length > 0 && (
                     <span className="block mt-1">
                       {task.turbineIds
                         .slice(0, 3)
@@ -338,7 +337,7 @@ export function TaskManagement({ project }: TaskManagementProps) {
                           return turbine ? turbine.code : id
                         })
                         .join(", ")}
-                      {task.turbineIds.length > 3 && "..."}
+                      {task.turbineIds && task.turbineIds.length > 3 && "..."}
                     </span>
                   )}
                 </div>

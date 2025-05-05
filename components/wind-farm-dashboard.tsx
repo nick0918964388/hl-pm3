@@ -16,6 +16,7 @@ export function WindFarmDashboard() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | null>(null)
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
+  const [selectedRange, setSelectedRange] = useState<{ start: Date; end: Date } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
@@ -62,11 +63,27 @@ export function WindFarmDashboard() {
         // 設置項目的開始和結束日期
         const currentProject = projects.find((p) => p.id === selectedProject)
         if (currentProject) {
+          const newFrom = new Date(currentProject.startDate);
+          const newTo = new Date(currentProject.endDate);
+          
           setDateRange({
-            from: new Date(currentProject.startDate),
-            to: new Date(currentProject.endDate),
-          })
-          setCurrentDate(new Date(currentProject.startDate))
+            from: newFrom,
+            to: newTo,
+          });
+          
+          // 初始化 selectedRange 為第一週
+          const oneWeekLater = new Date(newFrom);
+          oneWeekLater.setDate(newFrom.getDate() + 7);
+          setSelectedRange({
+            start: newFrom,
+            end: oneWeekLater > newTo ? newTo : oneWeekLater
+          });
+          
+          // 只有當當前日期不在項目日期範圍內，才重設當前日期
+          const current = currentDate;
+          if (current < newFrom || current > newTo) {
+            setCurrentDate(newFrom);
+          }
         }
 
         setIsLoading(false)
@@ -85,7 +102,9 @@ export function WindFarmDashboard() {
   }, [selectedProject, projects, toast])
 
   const handleProjectChange = (projectId: string) => {
-    setSelectedProject(projectId)
+    if (projectId !== selectedProject) {
+      setSelectedProject(projectId);
+    }
   }
 
   const handleDateRangeChange = (range: { from: Date; to: Date } | null) => {
@@ -93,19 +112,24 @@ export function WindFarmDashboard() {
   }
 
   const handleCurrentDateChange = (date: Date) => {
-    setCurrentDate(date)
+    if (date && (!currentDate || date.getTime() !== currentDate.getTime())) {
+      setCurrentDate(date);
+    }
+  }
+  
+  const handleTimeRangeChange = (start: Date, end: Date) => {
+    setSelectedRange({ start, end });
   }
 
-  // 根據當前日期篩選任務
-  const filteredTasks = tasks.filter((task) => {
-    const taskStartDate = new Date(task.startDate)
-    return taskStartDate <= currentDate
-  })
+  // 根據選擇的日期範圍篩選任務，而不僅是當前日期
+  const filteredTasks = tasks;
+  // 移除篩選，顯示所有任務，而不管起始時間
+  // 我們將在風機視覺化組件中控制哪些任務要塗色
 
   const currentProject = projects.find((p) => p.id === selectedProject)
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="w-full max-w-full mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div className="flex flex-col gap-2 w-full md:w-auto">
           <h2 className="text-xl font-semibold">風場狀態概覽</h2>
@@ -128,15 +152,17 @@ export function WindFarmDashboard() {
                 currentDate={currentDate}
                 onDateChange={handleCurrentDateChange}
                 projectName={currentProject?.name}
+                onRangeChange={handleTimeRangeChange}
               />
             )}
 
-            <div className="bg-white p-4 rounded-lg shadow">
+            <div className="bg-white p-4 rounded-lg shadow w-full">
               <WindFarmVisualization
                 projectName={currentProject?.name || ""}
                 turbines={turbines}
                 tasks={filteredTasks}
                 currentDate={currentDate}
+                dateRange={selectedRange}
               />
             </div>
 

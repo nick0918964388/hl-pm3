@@ -22,7 +22,7 @@ export function ProjectTabs() {
   const { toast } = useToast()
 
   useEffect(() => {
-    // 如果URL中有tab參數，設置為當前活動標籤
+    // If there's a tab parameter in the URL, set it as the active tab
     if (tabParam && ["projects", "tasks", "turbines"].includes(tabParam)) {
       setActiveTab(tabParam)
     }
@@ -41,8 +41,8 @@ export function ProjectTabs() {
       } catch (error) {
         console.error("Failed to load projects:", error)
         toast({
-          title: "錯誤",
-          description: "無法載入專案資料，請稍後再試",
+          title: "Error",
+          description: "Unable to load project data. Please try again later.",
           variant: "destructive",
         })
         setIsLoading(false)
@@ -58,19 +58,19 @@ export function ProjectTabs() {
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <TabsList>
-          <TabsTrigger value="projects">專案管理</TabsTrigger>
+          <TabsTrigger value="projects">Project Management</TabsTrigger>
           <TabsTrigger value="tasks" disabled={!selectedProject}>
-            任務管理
+            Task Management
           </TabsTrigger>
           <TabsTrigger value="turbines" disabled={!selectedProject}>
-            風機管理
+            Turbine Management
           </TabsTrigger>
         </TabsList>
 
         {selectedProject && (
           <Select value={selectedProjectId || ""} onValueChange={setSelectedProjectId}>
             <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="選擇專案" />
+              <SelectValue placeholder="Select Project" />
             </SelectTrigger>
             <SelectContent>
               {projects.map((project) => (
@@ -92,7 +92,7 @@ export function ProjectTabs() {
           <TaskManagement project={selectedProject} />
         ) : (
           <div className="flex justify-center items-center h-64 bg-muted/30 rounded-lg">
-            <p className="text-muted-foreground">請先選擇一個專案</p>
+            <p className="text-muted-foreground">Please select a project first</p>
           </div>
         )}
       </TabsContent>
@@ -102,7 +102,7 @@ export function ProjectTabs() {
           <TurbineManagement project={selectedProject} />
         ) : (
           <div className="flex justify-center items-center h-64 bg-muted/30 rounded-lg">
-            <p className="text-muted-foreground">請先選擇一個專案</p>
+            <p className="text-muted-foreground">Please select a project first</p>
           </div>
         )}
       </TabsContent>

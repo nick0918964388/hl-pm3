@@ -2,12 +2,8 @@
 
 import { useState, useEffect, useRef } from "react"
 import { format, addDays, differenceInDays, parseISO } from "date-fns"
-import { zhTW } from "date-fns/locale"
-import { Button } from "@/components/ui/button"
-import { CalendarIcon, Play, Pause, Calendar } from "lucide-react"
-import { DateRangePicker } from "@/components/date-range-picker"
-import type { DateRange } from "react-day-picker"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { enUS } from "date-fns/locale"
+import { CalendarIcon } from "lucide-react"
 import TimeRangeSlider from "@/components/time-range-slider"
 
 interface TimeSliderProps {
@@ -20,14 +16,14 @@ interface TimeSliderProps {
 }
 
 export function TimeSlider({ startDate, endDate, currentDate, onDateChange, projectName, onRangeChange }: TimeSliderProps) {
-  // 使用 ref 來存儲專案信息，減少重新渲染
+  // Use ref to store project info, reducing re-renders
   const projectInfoRef = useRef({
     totalDays: Math.max(1, differenceInDays(endDate, startDate) + 1),
     startDate,
     endDate
   });
   
-  // 選擇的日期範圍
+  // Selected date range
   const [dateRange, setDateRange] = useState<{
     start: Date;
     end: Date;
@@ -36,36 +32,36 @@ export function TimeSlider({ startDate, endDate, currentDate, onDateChange, proj
     end: addDays(startDate, Math.min(7, projectInfoRef.current.totalDays - 1))
   });
   
-  // 當前索引使用 ref 避免過多的更新
+  // Current index using ref to avoid too many updates
   const currentIndexRef = useRef(differenceInDays(currentDate, startDate));
   
-  // 動畫控制
+  // Animation control
   const [isPlaying, setIsPlaying] = useState(false);
   const animationRef = useRef<number | null>(null);
   const lastUpdateTimeRef = useRef<number>(0);
   
-  // 格式化當前日期的顯示
+  // Format current date display
   const getCurrentFormattedDate = () => {
     const date = addDays(startDate, currentIndexRef.current);
-    return format(date, "yyyy年MM月dd日", { locale: zhTW });
+    return format(date, "yyyy/MM/dd", { locale: enUS });
   };
   
-  // 更新外部的日期
+  // Update external date
   const updateExternalDate = () => {
     const date = addDays(startDate, currentIndexRef.current);
     onDateChange(date);
   };
   
-  // 初始化
+  // Initialization
   useEffect(() => {
-    // 更新項目信息
+    // Update project info
     projectInfoRef.current = {
       totalDays: Math.max(1, differenceInDays(endDate, startDate) + 1),
       startDate,
       endDate
     };
     
-    // 設置初始日期範圍
+    // Set initial date range
     const initialStart = startDate;
     const initialEnd = addDays(startDate, Math.min(7, projectInfoRef.current.totalDays - 1));
     
@@ -74,21 +70,21 @@ export function TimeSlider({ startDate, endDate, currentDate, onDateChange, proj
       end: initialEnd
     });
     
-    // 設置當前索引
+    // Set current index
     currentIndexRef.current = Math.min(
       Math.max(0, differenceInDays(currentDate, startDate)),
       projectInfoRef.current.totalDays - 1
     );
     
-    // 通知外部
+    // Notify external
     updateExternalDate();
     
-    // 通知父組件初始範圍
+    // Notify parent component of initial range
     if (onRangeChange) {
       onRangeChange(initialStart, initialEnd);
     }
     
-    // 清理任何可能的動畫
+    // Clean up any possible animations
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
@@ -96,7 +92,7 @@ export function TimeSlider({ startDate, endDate, currentDate, onDateChange, proj
     };
   }, [startDate, endDate, currentDate]);
   
-  // 播放動畫
+  // Play animation
   const animate = (time: number) => {
     if (!lastUpdateTimeRef.current) {
       lastUpdateTimeRef.current = time;
@@ -104,23 +100,23 @@ export function TimeSlider({ startDate, endDate, currentDate, onDateChange, proj
 
     const deltaTime = time - lastUpdateTimeRef.current;
 
-    // 每300毫秒更新一次
+    // Update every 300ms
     if (deltaTime > 300) {
       lastUpdateTimeRef.current = time;
       
-      // 計算範圍的索引
+      // Calculate range indices
       const startIndex = differenceInDays(dateRange.start, startDate);
       const endIndex = differenceInDays(dateRange.end, startDate);
       
-      // 更新當前索引
+      // Update current index
       currentIndexRef.current += 1;
       
-      // 如果超出範圍，返回開始
+      // If beyond range, return to start
       if (currentIndexRef.current > endIndex) {
         currentIndexRef.current = startIndex;
       }
       
-      // 通知外部
+      // Notify external
       updateExternalDate();
     }
 
@@ -129,7 +125,7 @@ export function TimeSlider({ startDate, endDate, currentDate, onDateChange, proj
     }
   };
   
-  // 控制動畫播放/暫停
+  // Control animation play/pause
   useEffect(() => {
     if (isPlaying) {
       lastUpdateTimeRef.current = 0;
@@ -145,11 +141,11 @@ export function TimeSlider({ startDate, endDate, currentDate, onDateChange, proj
     };
   }, [isPlaying]);
   
-  // 處理範圍變更
+  // Handle range change
   const handleRangeChange = (start: Date, end: Date) => {
     setDateRange({ start, end });
     
-    // 確保當前索引在範圍內
+    // Ensure current index is within range
     const startIndex = differenceInDays(start, startDate);
     const endIndex = differenceInDays(end, startDate);
     
@@ -158,25 +154,16 @@ export function TimeSlider({ startDate, endDate, currentDate, onDateChange, proj
       updateExternalDate();
     }
     
-    // 通知父組件日期範圍已變更
+    // Notify parent component of date range change
     if (onRangeChange) {
       onRangeChange(start, end);
     }
   };
   
-  // 處理日期選擇器變更
-  const handleDatePickerChange = (range: DateRange | null) => {
-    if (range?.from) {
-      const newStart = range.from;
-      const newEnd = range.to || addDays(range.from, 7);
-      handleRangeChange(newStart, newEnd);
-    }
-  };
-  
-  // 取得當前日期顯示
+  // Get current date display
   const [formattedDate, setFormattedDate] = useState(getCurrentFormattedDate());
   
-  // 更新顯示的日期
+  // Update displayed date
   useEffect(() => {
     const intervalId = setInterval(() => {
       setFormattedDate(getCurrentFormattedDate());
@@ -191,58 +178,29 @@ export function TimeSlider({ startDate, endDate, currentDate, onDateChange, proj
         <div className="flex items-center">
           <CalendarIcon className="mr-2 h-5 w-5 text-gray-500" />
           <h3 className="text-lg font-medium">
-            時間進度
+            Time Progress
             {projectName && <span className="ml-2 text-sm text-muted-foreground">({projectName})</span>}
           </h3>
         </div>
         <div className="flex items-center gap-4">
-          {/* 日期範圍選擇器 */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Calendar className="h-4 w-4 mr-2" />
-                設定日期範圍
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <div className="p-4">
-                <DateRangePicker 
-                  dateRange={{
-                    from: dateRange.start,
-                    to: dateRange.end
-                  }}
-                  onDateRangeChange={handleDatePickerChange}
-                />
-              </div>
-            </PopoverContent>
-          </Popover>
-          
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsPlaying(!isPlaying)}
-            aria-label={isPlaying ? "暫停" : "播放"}
-          >
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          </Button>
           <span className="text-sm font-medium">{formattedDate}</span>
         </div>
       </div>
       
       <div className="relative">
-        {/* 使用新的 TimeRangeSlider 元件 */}
+        {/* Use new TimeRangeSlider component */}
         <TimeRangeSlider
           projectStartDate={startDate.toISOString()}
           projectEndDate={endDate.toISOString()}
           onChange={handleRangeChange}
         />
         
-        {/* 已移除當前位置指標 */}
+        {/* Current position indicator removed */}
       </div>
       
-      {/* 顯示專案總天數 */}
+      {/* Display project total days */}
       <div className="mt-4 text-xs text-right text-gray-500">
-        專案總天數: {projectInfoRef.current.totalDays} 天
+        Total Project Days: {projectInfoRef.current.totalDays} days
       </div>
     </div>
   )

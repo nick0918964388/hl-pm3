@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
-import { zhTW } from "date-fns/locale"
+import { enUS } from "date-fns/locale"
 import { Plus, Pencil, Trash2, AlertCircle, Filter, Settings } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -30,22 +30,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { TaskForm } from "@/components/task-form"
-import { TaskTypeSettings, type TaskType } from "@/components/task-type-settings"
+import { TaskTypeSettings, type TaskTypeWithColor } from "@/components/task-type-settings"
 import type { Project, Task, Turbine } from "@/lib/types"
-import { fetchTasks, fetchTurbines, createTask, updateTask, deleteTask } from "@/lib/api"
+import { fetchTasks, fetchTurbines, createTask, updateTask, deleteTask, fetchTaskTypes } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 interface TaskManagementProps {
   project: Project
-}
-
-// 從 localStorage 獲取自定義任務類型
-const getCustomTaskTypes = () => {
-  if (typeof window !== "undefined") {
-    const savedTypes = localStorage.getItem("customTaskTypes")
-    return savedTypes ? JSON.parse(savedTypes) : []
-  }
-  return []
 }
 
 export function TaskManagement({ project }: TaskManagementProps) {
@@ -57,53 +48,94 @@ export function TaskManagement({ project }: TaskManagementProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [filterType, setFilterType] = useState<string>("all")
   const [filterStatus, setFilterStatus] = useState<string>("all")
-  const [taskTypes, setTaskTypes] = useState<TaskType[]>([])
+  const [taskTypes, setTaskTypes] = useState<TaskTypeWithColor[]>([])
   const [showTaskTypeSettings, setShowTaskTypeSettings] = useState(false)
   const { toast } = useToast()
 
-  // 預設任務類型
-  const defaultTaskTypes: TaskType[] = [
-    { value: "foundation", label: "海床整平", color: "red" },
-    { value: "piles", label: "樁基礎安裝", color: "yellow" },
-    { value: "jacket", label: "套管安裝", color: "blue" },
-    { value: "wtg", label: "風機安裝", color: "green" },
-    { value: "cables", label: "電纜鋪設", color: "purple" },
-    { value: "operation", label: "運營維護", color: "gray" },
-  ]
-
   useEffect(() => {
-    // 載入自定義任務類型
-    const customTypes = getCustomTaskTypes()
-    setTaskTypes([...defaultTaskTypes, ...customTypes])
-
     const loadData = async () => {
       try {
         setIsLoading(true)
-        const [tasksData, turbinesData] = await Promise.all([fetchTasks(project.id), fetchTurbines(project.id)])
+        // 並行獲取所有數據
+        const [tasksData, turbinesData, typesData] = await Promise.all([
+          fetchTasks(project.id), 
+          fetchTurbines(project.id),
+          fetchTaskTypes()
+        ])
+        
         setTasks(tasksData)
         setTurbines(turbinesData)
+        
+        // 處理任務類型數據，添加顏色屬性
+        const processedTypes = typesData.map(type => {
+          // 從localStorage獲取顏色設置
+          const savedColors = localStorage.getItem("taskTypeColors")
+          const colorMap = savedColors ? JSON.parse(savedColors) : {}
+          
+          // 默認顏色映射
+          const defaultColors: {[key: string]: string} = {
+            "foundation": "red",
+            "piles": "yellow",
+            "jacket": "blue",
+            "wtg": "green",
+            "cables": "purple",
+            "operation": "gray"
+          }
+          
+          return {
+            ...type,
+            color: colorMap[type.value] || defaultColors[type.value] || "gray",
+            isDefault: ["foundation", "piles", "jacket", "wtg", "cables", "operation"].includes(type.value)
+          } as TaskTypeWithColor
+        })
+        
+        setTaskTypes(processedTypes)
         setIsLoading(false)
       } catch (error) {
         console.error("Failed to load data:", error)
         toast({
-          title: "錯誤",
-          description: "無法載入任務和風機資料，請稍後再試",
+          title: "Error",
+          description: "Unable to load tasks and turbine data. Please try again later.",
           variant: "destructive",
         })
         setIsLoading(false)
+        
+        // 任務類型獲取失敗時使用默認類型
+        const defaultTaskTypes: TaskTypeWithColor[] = [
+          { value: "foundation", label: "Seabed Leveling", color: "red", isDefault: true },
+          { value: "piles", label: "Pile Foundation Installation", color: "yellow", isDefault: true },
+          { value: "jacket", label: "Jacket Installation", color: "blue", isDefault: true },
+          { value: "wtg", label: "Wind Turbine Installation", color: "green", isDefault: true },
+          { value: "cables", label: "Cable Laying", color: "purple", isDefault: true },
+          { value: "operation", label: "Operation & Maintenance", color: "gray", isDefault: true },
+        ]
+        setTaskTypes(defaultTaskTypes)
       }
     }
 
     loadData()
-
-    // 添加事件監聽器，當 localStorage 變更時重新載入任務類型
+    
+    // 任務類型可能在設置對話框中更改，需要監聽該事件
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "customTaskTypes") {
-        const updatedCustomTypes = getCustomTaskTypes()
-        setTaskTypes([...defaultTaskTypes, ...updatedCustomTypes])
+      if (e.key === "taskTypeColors") {
+        // 重新加載任務類型
+        fetchTaskTypes().then(types => {
+          const savedColors = localStorage.getItem("taskTypeColors")
+          const colorMap = savedColors ? JSON.parse(savedColors) : {}
+          
+          const processedTypes = types.map(type => ({
+            ...type,
+            color: colorMap[type.value] || "gray",
+            isDefault: ["foundation", "piles", "jacket", "wtg", "cables", "operation"].includes(type.value)
+          })) as TaskTypeWithColor[]
+          
+          setTaskTypes(processedTypes)
+        }).catch(err => {
+          console.error("Failed to reload task types:", err)
+        })
       }
     }
-
+    
     window.addEventListener("storage", handleStorageChange)
     return () => {
       window.removeEventListener("storage", handleStorageChange)
@@ -116,14 +148,14 @@ export function TaskManagement({ project }: TaskManagementProps) {
       setTasks([...tasks, newTask])
       setIsAddDialogOpen(false)
       toast({
-        title: "成功",
-        description: "任務已成功建立",
+        title: "Success",
+        description: "Task created successfully",
       })
     } catch (error) {
       console.error("Failed to create task:", error)
       toast({
-        title: "錯誤",
-        description: "無法建立任務，請稍後再試",
+        title: "Error",
+        description: "Unable to create task. Please try again later.",
         variant: "destructive",
       })
     }
@@ -138,14 +170,14 @@ export function TaskManagement({ project }: TaskManagementProps) {
       setIsEditDialogOpen(false)
       setSelectedTask(null)
       toast({
-        title: "成功",
-        description: "任務已成功更新",
+        title: "Success",
+        description: "Task updated successfully",
       })
     } catch (error) {
       console.error("Failed to update task:", error)
       toast({
-        title: "錯誤",
-        description: "無法更新任務，請稍後再試",
+        title: "Error",
+        description: "Unable to update task. Please try again later.",
         variant: "destructive",
       })
     }
@@ -156,14 +188,14 @@ export function TaskManagement({ project }: TaskManagementProps) {
       await deleteTask(taskId)
       setTasks(tasks.filter((task) => task.id !== taskId))
       toast({
-        title: "成功",
-        description: "任務已成功刪除",
+        title: "Success",
+        description: "Task deleted successfully",
       })
     } catch (error) {
       console.error("Failed to delete task:", error)
       toast({
-        title: "錯誤",
-        description: "無法刪除任務，請稍後再試",
+        title: "Error",
+        description: "Unable to delete task. Please try again later.",
         variant: "destructive",
       })
     }
@@ -172,22 +204,22 @@ export function TaskManagement({ project }: TaskManagementProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending":
-        return <Badge variant="outline">待處理</Badge>
+        return <Badge variant="outline">Pending</Badge>
       case "in-progress":
-        return <Badge variant="secondary">進行中</Badge>
+        return <Badge variant="secondary">In Progress</Badge>
       case "completed":
-        return <Badge variant="default">已完成</Badge>
+        return <Badge variant="default">Completed</Badge>
       default:
         return null
     }
   }
 
   const getTypeBadge = (type: string) => {
-    // 查找任務類型
+    // Find task type
     const taskType = taskTypes.find((t) => t.value === type)
 
     if (!taskType) {
-      // 如果找不到類型，使用默認樣式
+      // If type not found, use default style
       return (
         <Badge variant="outline" className="bg-gray-50 text-gray-700 hover:bg-gray-50">
           {type}
@@ -195,7 +227,7 @@ export function TaskManagement({ project }: TaskManagementProps) {
       )
     }
 
-    // 獲取顏色樣式
+    // Get color style
     const getColorClass = (color: string) => {
       const colorMap: Record<string, string> = {
         red: "bg-red-50 text-red-700 border-red-300",
@@ -226,29 +258,29 @@ export function TaskManagement({ project }: TaskManagementProps) {
     return typeMatch && statusMatch
   })
 
-  // 任務類型設定對話框關閉時重新載入任務類型
+  // Reload task types when task type settings dialog is closed
   const handleTaskTypeSettingsClose = () => {
     setShowTaskTypeSettings(false)
-    const customTypes = getCustomTaskTypes()
-    setTaskTypes([...defaultTaskTypes, ...customTypes])
+    const customTypes = localStorage.getItem("customTaskTypes") ? JSON.parse(localStorage.getItem("customTaskTypes")!) : []
+    setTaskTypes([...taskTypes.filter(t => t.isDefault), ...customTypes])
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold">任務管理 - {project.name}</h2>
+        <h2 className="text-2xl font-bold">Task Management - {project.name}</h2>
         <div className="flex gap-2">
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                新增任務
+                Add Task
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[700px]">
               <DialogHeader>
-                <DialogTitle>新增任務</DialogTitle>
-                <DialogDescription>填寫以下表單來建立新的工作任務</DialogDescription>
+                <DialogTitle>Add Task</DialogTitle>
+                <DialogDescription>Fill out the form below to create a new task</DialogDescription>
               </DialogHeader>
               <TaskForm
                 projectId={project.id}
@@ -261,7 +293,7 @@ export function TaskManagement({ project }: TaskManagementProps) {
 
           <Button variant="outline" onClick={() => setShowTaskTypeSettings(true)}>
             <Settings className="mr-2 h-4 w-4" />
-            任務類型設定
+            Task Type Settings
           </Button>
         </div>
       </div>
@@ -269,15 +301,15 @@ export function TaskManagement({ project }: TaskManagementProps) {
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">篩選：</span>
+          <span className="text-sm font-medium">Filter:</span>
         </div>
         <div className="flex flex-wrap gap-4">
           <Select value={filterType} onValueChange={setFilterType}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="選擇任務類型" />
+              <SelectValue placeholder="Select task type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">所有類型</SelectItem>
+              <SelectItem value="all">All Types</SelectItem>
               {taskTypes.map((type) => (
                 <SelectItem key={type.value} value={type.value}>
                   {type.label}
@@ -288,13 +320,13 @@ export function TaskManagement({ project }: TaskManagementProps) {
 
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="選擇任務狀態" />
+              <SelectValue placeholder="Select task status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">所有狀態</SelectItem>
-              <SelectItem value="pending">待處理</SelectItem>
-              <SelectItem value="in-progress">進行中</SelectItem>
-              <SelectItem value="completed">已完成</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -307,8 +339,8 @@ export function TaskManagement({ project }: TaskManagementProps) {
       ) : filteredTasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 bg-muted/30 rounded-lg">
           <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-medium text-muted-foreground">尚無任務</h3>
-          <p className="text-muted-foreground mt-2">點擊「新增任務」按鈕來建立工作任務</p>
+          <h3 className="text-xl font-medium text-muted-foreground">No Tasks Yet</h3>
+          <p className="text-muted-foreground mt-2">Click the "Add Task" button to create a new task</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -320,14 +352,14 @@ export function TaskManagement({ project }: TaskManagementProps) {
                   {getStatusBadge(task.status)}
                 </div>
                 <CardDescription>
-                  完工日期: {format(new Date(task.endDate), "yyyy/MM/dd", { locale: zhTW })}
+                  Completion Date: {format(new Date(task.endDate), "yyyy/MM/dd", { locale: enUS })}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-2">{getTypeBadge(task.type)}</div>
                 <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{task.description}</p>
                 <div className="text-xs text-muted-foreground">
-                  涉及風機：{task.turbineIds?.length || 0} 台
+                  Turbines Involved: {task.turbineIds?.length || 0}
                   {task.turbineIds && task.turbineIds.length > 0 && (
                     <span className="block mt-1">
                       {task.turbineIds
@@ -360,13 +392,13 @@ export function TaskManagement({ project }: TaskManagementProps) {
                       }}
                     >
                       <Pencil className="mr-2 h-4 w-4" />
-                      編輯
+                      Edit
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[700px]">
                     <DialogHeader>
-                      <DialogTitle>編輯任務</DialogTitle>
-                      <DialogDescription>修改任務資訊</DialogDescription>
+                      <DialogTitle>Edit Task</DialogTitle>
+                      <DialogDescription>Modify task information</DialogDescription>
                     </DialogHeader>
                     {selectedTask && (
                       <TaskForm
@@ -387,17 +419,17 @@ export function TaskManagement({ project }: TaskManagementProps) {
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" size="sm">
                       <Trash2 className="mr-2 h-4 w-4" />
-                      刪除
+                      Delete
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>確認刪除</AlertDialogTitle>
-                      <AlertDialogDescription>您確定要刪除此任務嗎？此操作無法撤銷。</AlertDialogDescription>
+                      <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+                      <AlertDialogDescription>Are you sure you want to delete this task? This action cannot be undone.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>取消</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDeleteTask(task.id)}>確認刪除</AlertDialogAction>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeleteTask(task.id)}>Confirm Delete</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -407,11 +439,11 @@ export function TaskManagement({ project }: TaskManagementProps) {
         </div>
       )}
 
-      {/* 任務類型設定對話框 */}
+      {/* Task Type Settings Dialog */}
       <Dialog open={showTaskTypeSettings} onOpenChange={setShowTaskTypeSettings}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>任務類型設定</DialogTitle>
+            <DialogTitle>Task Type Settings</DialogTitle>
           </DialogHeader>
           <TaskTypeSettings onClose={handleTaskTypeSettingsClose} />
         </DialogContent>

@@ -12,33 +12,33 @@ export function Navbar() {
 
   const navItems = [
     {
-      name: "風機監控",
+      name: "Turbine Monitoring",
       icon: Wind,
       href: "/monitoring",
       children: [],
     },
     {
-      name: "專案管理",
+      name: "Project Management",
       icon: Building2,
       children: [
         {
-          name: "風場專案儀表板",
+          name: "Wind Farm Project Dashboard",
           href: "/projects/dashboard",
           icon: LayoutDashboard,
         },
         {
-          name: "專案管理",
+          name: "Project Management",
           href: "/projects",
           icon: Building2,
         },
       ],
     },
     {
-      name: "基本資料設定",
+      name: "Basic Data Settings",
       icon: Database,
       children: [
         {
-          name: "風機管理",
+          name: "Turbine Management",
           href: "/turbines",
           icon: Wind,
         },
@@ -46,7 +46,7 @@ export function Navbar() {
     },
   ]
 
-  // 檢查當前路徑是否匹配某個導航項或其子項
+  // Check if current path matches a navigation item or its children
   const isActive = (item: (typeof navItems)[0]) => {
     if (item.href && pathname === item.href) return true
     if (item.children && item.children.some((child) => child.href === pathname)) return true
@@ -55,8 +55,8 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-primary text-primary-foreground shadow-sm">
-      <div className="container flex h-14 items-center justify-center">
-        <nav className="flex items-center justify-center space-x-4 lg:space-x-6">
+      <div className="container flex h-14 items-center justify-start">
+        <nav className="flex items-center space-x-4 lg:space-x-6 pl-4">
           <Link href="/" className="flex items-center space-x-2 mr-4">
             <Wind className="h-6 w-6" />
           </Link>
@@ -108,7 +108,7 @@ export function Navbar() {
             href="/profile"
             className="ml-4 text-sm font-medium text-primary-foreground/70 transition-colors hover:text-primary-foreground/80"
           >
-            使用者設定
+            User Settings
           </Link>
         </nav>
       </div>

@@ -1,110 +1,132 @@
-import type { Project, Task, Turbine } from "./types"
+import type { Project, Task, Turbine, TaskType, Cable, Substation } from "./types"
 import { addDays, addWeeks } from "date-fns"
 
-// API配置
+// 預設任務類型
+const defaultTaskTypes: TaskType[] = [
+  { value: "foundation", label: "Seabed Leveling" },
+  { value: "piles", label: "Pile Foundation Installation" },
+  { value: "jacket", label: "Jacket Installation" },
+  { value: "wtg", label: "Wind Turbine Installation" },
+  { value: "cables", label: "Cable Laying" },
+  { value: "operation", label: "Operation & Maintenance" }
+];
+
+// API Configuration
 export const API_CONFIG = {
-  useMaximoAPI: process.env.NEXT_PUBLIC_USE_MAXIMO_API === "true" || false, // 從環境變量讀取
-  baseURL: process.env.NEXT_PUBLIC_MAXIMO_API_BASE_URL || "http://hl.webtw.xyz/maximo/oslc/script/",
-  timeout: Number(process.env.NEXT_PUBLIC_API_TIMEOUT || "10000"), // 毫秒
-  maxauth: process.env.NEXT_PUBLIC_MAXIMO_AUTH || "bWF4YWRtaW46emFxMXhzVzI=" // Maximo授權token
+  useMaximoAPI: process.env.NEXT_PUBLIC_USE_MAXIMO_API === "true" || true, // Read from environment variables
+  timeout: Number(process.env.NEXT_PUBLIC_API_TIMEOUT || "10000"), // Milliseconds
+  maxauth: process.env.NEXT_PUBLIC_MAXIMO_AUTH || "bWF4YWRtaW46emFxMXhzVzI=" // Maximo authorization token
 }
 
-// Maximo API 端點
+// Maximo API Endpoints
 const API_ENDPOINTS = {
-  // 專案相關端點
+  // Project related endpoints
   getProjects: "GET_PROJECTS",
   createProject: "CREATE_PROJECT",
   updateProject: "UPDATE_PROJECT",
   deleteProject: "DELETE_PROJECT",
   
-  // 風機相關端點
+  // Turbine related endpoints
   getTurbines: "GET_TURBINES",
   createTurbine: "CREATE_TURBINE",
   updateTurbine: "UPDATE_TURBINE",
   deleteTurbine: "DELETE_TURBINE",
   
-  // 任務相關端點
+  // Cable and Substation related endpoints
+  getCables: "GET_CABLES",
+  getSubstations: "GET_SUBSTATIONS",
+  
+  // Task related endpoints
   getTasks: "GET_TASKS",
   createTask: "CREATE_TASK",
   updateTask: "UPDATE_TASK",
-  deleteTask: "DELETE_TASK"
+  deleteTask: "DELETE_TASK",
+  
+  // Task type related endpoints
+  getTaskTypes: "GET_TASK_TYPES",
+  newTaskType: "NEW_TASK_TYPE",
+  deleteTaskType: "DELETE_TASK_TYPE"
 }
 
-// Maximo API 調用函數
+// Maximo API Call Function
 async function callMaximoAPI<T>(endpoint: string, data: any = {}): Promise<T> {
   try {
-    const url = `${API_CONFIG.baseURL}${endpoint}`
+    // 確保端點是有效的URL路徑
+    const sanitizedEndpoint = endpoint.replace(/[^\w-]/g, '_');
     
-    // 從data對象中移除maxauth，不再在請求體中發送
+    // Use Next.js proxy route
+    const url = `/api/maximo/${sanitizedEndpoint}`
+    
+    // Remove maxauth from data object, no longer sending in request body
     const requestData = { ...data }
     
     const options: RequestInit = {
-      method: "POST", // 統一使用POST方法
+      method: "POST", // Uniformly use POST method
       headers: {
         "Content-Type": "application/json",
-        "maxauth": API_CONFIG.maxauth, // 直接在header中設置maxauth
+        "maxauth": API_CONFIG.maxauth, // Set maxauth directly in header
       },
       body: JSON.stringify(requestData)
     }
 
-    // 使用AbortController實現請求超時
+    // Use AbortController to implement request timeout
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout)
     options.signal = controller.signal
 
     try {
       const response = await fetch(url, options)
-      clearTimeout(timeoutId) // 清除超時計時器
+      clearTimeout(timeoutId) // Clear timeout timer
       
       if (!response.ok) {
-        throw new Error(`API請求失敗: ${response.status} ${response.statusText}`)
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
       }
       
       return await response.json() as T
     } catch (error) {
-      clearTimeout(timeoutId) // 確保清除超時計時器
+      clearTimeout(timeoutId) // Ensure timeout timer is cleared
       throw error
     }
   } catch (error) {
-    console.error("Maximo API調用失敗:", error)
+    console.error("Maximo API call failed:", error)
     throw error
   }
 }
 
-// 修改模擬專案數據部分
+// Modified mock project data section
 const mockProjects: Project[] = [
   {
     id: "1",
     name: "HAI LONG 2A + 2B",
-    description: "海龍風場專案，位於台灣海峽，總裝機容量為1,044 MW",
+    description: "Hai Long Wind Farm Project, located in the Taiwan Strait, with a total installed capacity of 1,044 MW",
     startDate: "2023-01-01",
     endDate: "2023-12-31",
   },
   {
     id: "2",
     name: "FORMOSA 2",
-    description: "福爾摩沙風場專案，位於苗栗外海，總裝機容量為376 MW",
+    description: "Formosa Wind Farm Project, located off the coast of Miaoli, with a total installed capacity of 376 MW",
     startDate: "2023-03-15",
     endDate: "2024-06-30",
   },
   {
     id: "3",
     name: "GREATER CHANGHUA",
-    description: "大彰化風場專案，位於彰化外海，總裝機容量為900 MW",
+    description: "Greater Changhua Wind Farm Project, located off the coast of Changhua, with a total installed capacity of 900 MW",
     startDate: "2023-02-01",
     endDate: "2024-01-31",
   },
   {
     id: "4",
     name: "YUNLIN OFFSHORE",
-    description: "雲林離岸風場專案，位於雲林外海，總裝機容量為640 MW",
+    description: "Yunlin Offshore Wind Farm Project, located off the coast of Yunlin, with a total installed capacity of 640 MW",
     startDate: "2023-04-01",
     endDate: "2024-03-31",
   },
 ]
 
-// 為新增的專案添加模擬風機數據
-// 在mockTurbines對象中添加新專案的風機數據
+// Add simulated turbine data for new projects
+// Add turbine data for new projects in the mockTurbines object
 const mockTurbines: { [key: string]: Turbine[] } = {
   "1": Array.from({ length: 38 }, (_, i) => {
     const row = Math.floor(i / 9)
@@ -112,13 +134,41 @@ const mockTurbines: { [key: string]: Turbine[] } = {
     const series = col < 5 ? "HL21" : "HL22"
     const position = String(row + 1).padStart(2, "0") + (col < 5 ? "-A" : "-B")
     const code = `${series}-${position}`
+    
+    // 生成隨機狀態和運行數據
+    const statusOptions = ['normal', 'warning', 'error', 'maintenance'] as const
+    const statusIndex = Math.random() > 0.7 ? Math.floor(Math.random() * 3) + 1 : 0
+    const status = statusOptions[statusIndex]
+    
+    // 根據狀態生成對應的數據
+    const rpm = status === 'normal' ? 12 + Math.random() * 4 : 
+               status === 'warning' ? 8 + Math.random() * 5 :
+               status === 'maintenance' || status === 'error' ? 0 : 0
+    
+    const power = status === 'normal' ? 0.8 + Math.random() * 0.5 :
+                 status === 'warning' ? 0.3 + Math.random() * 0.6 :
+                 status === 'maintenance' || status === 'error' ? 0 : 0
+    
+    const maintenanceTickets = status === 'normal' ? 0 :
+                              status === 'warning' ? 1 :
+                              status === 'error' ? Math.floor(Math.random() * 2) + 1 :
+                              status === 'maintenance' ? 1 : 0
+
+    // 生成台灣北部海域的座標 (約宜蘭外海)
+    const baseLat = 24.7 + (row * 0.05)
+    const baseLng = 122.1 + (col * 0.05)
 
     return {
       id: `WB${String(i + 30).padStart(3, "0")}`,
       code: code,
-      name: `風機 ${i + 1}`,
+      name: `Turbine ${i + 1}`,
       displayName: code,
       location: { x: col, y: row },
+      coordinates: { lat: baseLat, lng: baseLng },
+      status,
+      rpm: Number(rpm.toFixed(1)),
+      power: Number(power.toFixed(1)),
+      maintenanceTickets
     }
   }),
   "2": Array.from({ length: 25 }, (_, i) => {
@@ -127,13 +177,41 @@ const mockTurbines: { [key: string]: Turbine[] } = {
     const series = "FM2"
     const position = String(row + 1).padStart(2, "0") + "-" + String(col + 1).padStart(2, "0")
     const code = `${series}-${position}`
+    
+    // 生成隨機狀態和運行數據
+    const statusOptions = ['normal', 'warning', 'error', 'maintenance'] as const
+    const statusIndex = Math.random() > 0.7 ? Math.floor(Math.random() * 3) + 1 : 0
+    const status = statusOptions[statusIndex]
+    
+    // 根據狀態生成對應的數據
+    const rpm = status === 'normal' ? 12 + Math.random() * 4 : 
+               status === 'warning' ? 8 + Math.random() * 5 :
+               status === 'maintenance' || status === 'error' ? 0 : 0
+    
+    const power = status === 'normal' ? 0.8 + Math.random() * 0.5 :
+                 status === 'warning' ? 0.3 + Math.random() * 0.6 :
+                 status === 'maintenance' || status === 'error' ? 0 : 0
+    
+    const maintenanceTickets = status === 'normal' ? 0 :
+                              status === 'warning' ? 1 :
+                              status === 'error' ? Math.floor(Math.random() * 2) + 1 :
+                              status === 'maintenance' ? 1 : 0
+
+    // 生成台灣西部海域的座標 (約苗栗外海)
+    const baseLat = 24.55 + (row * 0.04)
+    const baseLng = 120.4 + (col * 0.04)
 
     return {
       id: `FM${String(i + 1).padStart(3, "0")}`,
       code: code,
-      name: `風機 ${i + 1}`,
+      name: `Turbine ${i + 1}`,
       displayName: code,
       location: { x: col, y: row },
+      coordinates: { lat: baseLat, lng: baseLng },
+      status,
+      rpm: Number(rpm.toFixed(1)),
+      power: Number(power.toFixed(1)),
+      maintenanceTickets
     }
   }),
   "3": Array.from({ length: 30 }, (_, i) => {
@@ -142,13 +220,41 @@ const mockTurbines: { [key: string]: Turbine[] } = {
     const series = "GC"
     const position = String(row + 1).padStart(2, "0") + "-" + String(col + 1).padStart(2, "0")
     const code = `${series}-${position}`
+    
+    // 生成隨機狀態和運行數據
+    const statusOptions = ['normal', 'warning', 'error', 'maintenance'] as const
+    const statusIndex = Math.random() > 0.7 ? Math.floor(Math.random() * 3) + 1 : 0
+    const status = statusOptions[statusIndex]
+    
+    // 根據狀態生成對應的數據
+    const rpm = status === 'normal' ? 12 + Math.random() * 4 : 
+               status === 'warning' ? 8 + Math.random() * 5 :
+               status === 'maintenance' || status === 'error' ? 0 : 0
+    
+    const power = status === 'normal' ? 0.8 + Math.random() * 0.5 :
+                 status === 'warning' ? 0.3 + Math.random() * 0.6 :
+                 status === 'maintenance' || status === 'error' ? 0 : 0
+    
+    const maintenanceTickets = status === 'normal' ? 0 :
+                              status === 'warning' ? 1 :
+                              status === 'error' ? Math.floor(Math.random() * 2) + 1 :
+                              status === 'maintenance' ? 1 : 0
+
+    // 生成台灣中部海域的座標 (約彰化外海)
+    const baseLat = 23.8 + (row * 0.04)
+    const baseLng = 120.0 + (col * 0.04)
 
     return {
       id: `GC${String(i + 1).padStart(3, "0")}`,
       code: code,
-      name: `風機 ${i + 1}`,
+      name: `Turbine ${i + 1}`,
       displayName: code,
       location: { x: col, y: row },
+      coordinates: { lat: baseLat, lng: baseLng },
+      status,
+      rpm: Number(rpm.toFixed(1)),
+      power: Number(power.toFixed(1)),
+      maintenanceTickets
     }
   }),
   "4": Array.from({ length: 20 }, (_, i) => {
@@ -157,57 +263,85 @@ const mockTurbines: { [key: string]: Turbine[] } = {
     const series = "YL"
     const position = String(row + 1).padStart(2, "0") + "-" + String(col + 1).padStart(2, "0")
     const code = `${series}-${position}`
+    
+    // 生成隨機狀態和運行數據
+    const statusOptions = ['normal', 'warning', 'error', 'maintenance'] as const
+    const statusIndex = Math.random() > 0.7 ? Math.floor(Math.random() * 3) + 1 : 0
+    const status = statusOptions[statusIndex]
+    
+    // 根據狀態生成對應的數據
+    const rpm = status === 'normal' ? 12 + Math.random() * 4 : 
+               status === 'warning' ? 8 + Math.random() * 5 :
+               status === 'maintenance' || status === 'error' ? 0 : 0
+    
+    const power = status === 'normal' ? 0.8 + Math.random() * 0.5 :
+                 status === 'warning' ? 0.3 + Math.random() * 0.6 :
+                 status === 'maintenance' || status === 'error' ? 0 : 0
+    
+    const maintenanceTickets = status === 'normal' ? 0 :
+                              status === 'warning' ? 1 :
+                              status === 'error' ? Math.floor(Math.random() * 2) + 1 :
+                              status === 'maintenance' ? 1 : 0
+
+    // 生成台灣中南部海域的座標 (約雲林外海)
+    const baseLat = 23.6 + (row * 0.03)
+    const baseLng = 120.0 + (col * 0.03)
 
     return {
       id: `YL${String(i + 1).padStart(3, "0")}`,
       code: code,
-      name: `風機 ${i + 1}`,
+      name: `Turbine ${i + 1}`,
       displayName: code,
       location: { x: col, y: row },
+      coordinates: { lat: baseLat, lng: baseLng },
+      status,
+      rpm: Number(rpm.toFixed(1)),
+      power: Number(power.toFixed(1)),
+      maintenanceTickets
     }
   }),
 }
 
-// 定義每個專案的任務類型
+// Define task types for each project
 const projectTaskTypes = {
-  "1": ["foundation", "piles", "jacket", "wtg", "cables", "operation"], // 海龍 - 6種任務類型
-  "2": ["foundation", "piles", "jacket", "cables"], // 福爾摩沙 - 4種任務類型
-  "3": ["foundation", "piles", "jacket", "wtg", "cables"], // 大彰化 - 5種任務類型
-  "4": ["foundation", "piles", "jacket"], // 雲林 - 3種任務類型
+  "1": ["foundation", "piles", "jacket", "wtg", "cables", "operation"], // Hai Long - 6 task types
+  "2": ["foundation", "piles", "jacket", "cables"], // Formosa - 4 task types
+  "3": ["foundation", "piles", "jacket", "wtg", "cables"], // Greater Changhua - 5 task types
+  "4": ["foundation", "piles", "jacket"], // Yunlin - 3 task types
 }
 
-// 生成任務數據，按照時間順序分配任務
+// Generate task data, allocate tasks in chronological order
 const generateTasksWithTimeProgression = (projectId: string, turbines: Turbine[]) => {
   const tasks: Task[] = []
   const baseDate = new Date("2023-01-01")
 
-  // 獲取該專案的任務類型
+  // Get task types for this project
   const taskTypes = projectTaskTypes[projectId as keyof typeof projectTaskTypes] || ["foundation", "piles", "jacket"]
 
-  // 計算每個任務類型的時間間隔
-  const totalWeeks = 52 // 一年的週數
+  // Calculate time interval for each task type
+  const totalWeeks = 52 // Weeks in a year
   const weeksPerTaskType = Math.floor(totalWeeks / taskTypes.length)
 
-  // 為每種任務類型生成任務
+  // Generate tasks for each task type
   taskTypes.forEach((taskType, typeIndex) => {
-    // 計算該任務類型的開始週和結束週
+    // Calculate start week and end week for this task type
     const startWeek = typeIndex * weeksPerTaskType
     const endWeek = (typeIndex + 1) * weeksPerTaskType - 1
 
-    // 每週完成的風機數量
+    // Number of turbines completed per week
     const turbinesPerWeek = Math.ceil(turbines.length / (endWeek - startWeek + 1))
 
-    // 為每個風機生成該類型的任務
+    // Generate tasks of this type for each turbine
     turbines.forEach((turbine, turbineIndex) => {
-      // 計算該風機任務的週偏移量
+      // Calculate week offset for this turbine's task
       const weekOffset = startWeek + Math.floor(turbineIndex / turbinesPerWeek)
       const startDate = addWeeks(baseDate, weekOffset)
-      const endDate = addDays(startDate, 6) // 一週後完成
+      const endDate = addDays(startDate, 6) // Completed after one week
 
-      // 根據時間確定任務狀態
+      // Determine task status based on time
       const status = weekOffset < 20 ? "completed" : weekOffset < 30 ? "in-progress" : "pending"
 
-      // 確保taskType是有效的Task.type類型
+      // Ensure taskType is a valid Task.type
       const validTaskType = taskType as "foundation" | "piles" | "jacket" | "wtg" | "cables" | "operation"
 
       tasks.push({
@@ -227,34 +361,35 @@ const generateTasksWithTimeProgression = (projectId: string, turbines: Turbine[]
   return tasks
 }
 
-// 獲取任務類型的中文名稱
+// Get task type name
 const getTaskTypeName = (taskType: string): string => {
   const taskTypeNames: { [key: string]: string } = {
-    foundation: "海床整平",
-    piles: "樁基礎安裝",
-    jacket: "套管安裝",
-    wtg: "風機安裝",
-    cables: "電纜鋪設",
-    operation: "運營維護",
+    foundation: "Seabed Leveling",
+    piles: "Pile Foundation Installation",
+    jacket: "Jacket Installation",
+    wtg: "Wind Turbine Installation",
+    cables: "Cable Laying",
+    operation: "Operation & Maintenance",
   }
   return taskTypeNames[taskType] || taskType
 }
 
-// 獲取任務類型的描述
+// Get task type description
 const getTaskTypeDescription = (taskType: string): string => {
   const taskTypeDescriptions: { [key: string]: string } = {
-    foundation: "風機基礎海床整平工作",
-    piles: "風機樁基礎安裝工作",
-    jacket: "風機套管安裝工作",
-    wtg: "風機本體安裝工作",
-    cables: "風機電纜鋪設工作",
-    operation: "風機運營維護工作",
+    foundation: "Wind turbine foundation seabed leveling work",
+    piles: "Wind turbine pile foundation installation work",
+    jacket: "Wind turbine jacket installation work",
+    wtg: "Wind turbine body installation work",
+    cables: "Wind turbine cable laying work",
+    operation: "Wind turbine operation and maintenance work",
   }
-  return taskTypeDescriptions[taskType] || "風機相關工作"
+  
+  return taskTypeDescriptions[taskType] || ""
 }
 
-// 為新增的專案生成任務數據
-// 在mockTasks對象中添加新專案的任務數據
+// Generate task data for new projects
+// Add task data for new projects in the mockTasks object
 const mockTasks: { [key: string]: Task[] } = {
   "1": generateTasksWithTimeProgression("1", mockTurbines["1"]),
   "2": generateTasksWithTimeProgression("2", mockTurbines["2"]),
@@ -262,50 +397,51 @@ const mockTasks: { [key: string]: Task[] } = {
   "4": generateTasksWithTimeProgression("4", mockTurbines["4"]),
 }
 
-// 格式化日期為yyyy-MM-dd
+// Format date as yyyy-MM-dd
 function formatDate(dateString: string): string {
   if (!dateString) return '';
   const date = new Date(dateString);
-  return date.toISOString().split('T')[0]; // 從ISO格式中取出yyyy-MM-dd部分
+  return date.toISOString().split('T')[0]; // Extract yyyy-MM-dd part from ISO format
 }
 
-// API 函數 - 專案管理
+// API Functions - Project Management
 export async function fetchProjects(): Promise<Project[]> {
   if (API_CONFIG.useMaximoAPI) {
+    console.log('Attempting to get data using API');
     try {
       return await callMaximoAPI<Project[]>(API_ENDPOINTS.getProjects)
     } catch (error) {
-      console.warn("使用Maximo API獲取專案失敗，回退到模擬數據", error)
+      console.warn("Failed to fetch projects using Maximo API, falling back to mock data", error)
       return [...mockProjects]
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 600))
   return [...mockProjects]
 }
 
-// 新增獲取單個專案的功能
+// Add function to fetch a single project
 export async function fetchProject(projectId: string): Promise<Project | null> {
   if (API_CONFIG.useMaximoAPI) {
     try {
-      // 如果實際API有獲取單個專案的端點，可以使用以下代碼
+      // If the actual API has an endpoint for fetching a single project, use the following code
       // return await callMaximoAPI<Project>(API_ENDPOINTS.getProject, { projectId })
       
-      // 目前暫時使用獲取所有專案再篩選的方式
+      // Currently temporarily using the method of fetching all projects and then filtering
       const projects = await callMaximoAPI<Project[]>(API_ENDPOINTS.getProjects)
       return projects.find(project => project.id === projectId) || null
     } catch (error) {
-      console.warn("使用Maximo API獲取單個專案失敗，回退到模擬數據", error)
-      // 從模擬數據中查找專案，確保函數總是返回一個值
+      console.warn("Failed to fetch single project using Maximo API, falling back to mock data", error)
+      // Find project from mock data, ensure the function always returns a value
       const project = mockProjects.find(p => p.id === projectId)
       return project || null
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 500))
-  // 從模擬數據中查找專案
+  // Find project from mock data
   const project = mockProjects.find(p => p.id === projectId)
   return project || null
 }
@@ -313,7 +449,7 @@ export async function fetchProject(projectId: string): Promise<Project | null> {
 export async function createProject(project: Project): Promise<Project> {
   if (API_CONFIG.useMaximoAPI) {
     try {
-      // 複製並轉換日期格式
+      // Copy and convert date format
       const formattedProject = {
         ...project,
         startDate: formatDate(project.startDate),
@@ -322,15 +458,15 @@ export async function createProject(project: Project): Promise<Project> {
       
       return await callMaximoAPI<Project>(API_ENDPOINTS.createProject, formattedProject)
     } catch (error) {
-      console.warn("使用Maximo API創建專案失敗，回退到模擬數據", error)
-      // 回退到模擬數據操作
+      console.warn("Failed to create project using Maximo API, falling back to mock data", error)
+      // Fall back to mock data operation
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 700))
   
-  // 確保專案有唯一ID - 使用時間戳+隨機字符串組合
+  // Ensure project has unique ID - use timestamp + random string combination
   const newProject = { 
     ...project, 
     id: project.id || `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
@@ -343,7 +479,7 @@ export async function createProject(project: Project): Promise<Project> {
 export async function updateProject(project: Project): Promise<Project> {
   if (API_CONFIG.useMaximoAPI) {
     try {
-      // 複製並轉換日期格式
+      // Copy and convert date format
       const formattedProject = {
         ...project,
         startDate: formatDate(project.startDate),
@@ -352,12 +488,12 @@ export async function updateProject(project: Project): Promise<Project> {
       
       return await callMaximoAPI<Project>(API_ENDPOINTS.updateProject, formattedProject)
     } catch (error) {
-      console.warn("使用Maximo API更新專案失敗，回退到模擬數據", error)
-      // 回退到模擬數據操作
+      console.warn("Failed to update project using Maximo API, falling back to mock data", error)
+      // Fall back to mock data operation
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 600))
   const index = mockProjects.findIndex((p) => p.id === project.id)
   if (index !== -1) {
@@ -372,12 +508,12 @@ export async function deleteProject(projectId: string): Promise<void> {
       await callMaximoAPI<void>(API_ENDPOINTS.deleteProject, { projectId })
       return
     } catch (error) {
-      console.warn("使用Maximo API刪除專案失敗，回退到模擬數據", error)
-      // 回退到模擬數據操作
+      console.warn("Failed to delete project using Maximo API, falling back to mock data", error)
+      // Fall back to mock data operation
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 500))
   const index = mockProjects.findIndex((p) => p.id === projectId)
   if (index !== -1) {
@@ -385,18 +521,18 @@ export async function deleteProject(projectId: string): Promise<void> {
   }
 }
 
-// API 函數 - 風機管理
+// API Functions - Turbine Management
 export async function fetchTurbines(projectId: string): Promise<Turbine[]> {
   if (API_CONFIG.useMaximoAPI) {
     try {
       return await callMaximoAPI<Turbine[]>(API_ENDPOINTS.getTurbines, { projectId })
     } catch (error) {
-      console.warn("使用Maximo API獲取風機失敗，回退到模擬數據", error)
+      console.warn("Failed to fetch turbines using Maximo API, falling back to mock data", error)
       return mockTurbines[projectId] || []
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 700))
   return mockTurbines[projectId] || []
 }
@@ -407,12 +543,12 @@ export async function createTurbine(projectId: string, turbine: Turbine): Promis
       const data = { ...turbine, projectId }
       return await callMaximoAPI<Turbine>(API_ENDPOINTS.createTurbine, data)
     } catch (error) {
-      console.warn("使用Maximo API創建風機失敗，回退到模擬數據", error)
-      // 回退到模擬數據操作
+      console.warn("Failed to create turbine using Maximo API, falling back to mock data", error)
+      // Fall back to mock data operation
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 600))
   if (!mockTurbines[projectId]) {
     mockTurbines[projectId] = []
@@ -426,12 +562,12 @@ export async function updateTurbine(projectId: string, turbine: Turbine): Promis
     try {
       return await callMaximoAPI<Turbine>(API_ENDPOINTS.updateTurbine, { ...turbine, projectId })
     } catch (error) {
-      console.warn("使用Maximo API更新風機失敗，回退到模擬數據", error)
-      // 回退到模擬數據操作
+      console.warn("Failed to update turbine using Maximo API, falling back to mock data", error)
+      // Fall back to mock data operation
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 500))
   const turbines = mockTurbines[projectId] || []
   const index = turbines.findIndex((t) => t.id === turbine.id)
@@ -447,12 +583,12 @@ export async function deleteTurbine(projectId: string, turbineId: string): Promi
       await callMaximoAPI<void>(API_ENDPOINTS.deleteTurbine, { projectId, turbineId })
       return
     } catch (error) {
-      console.warn("使用Maximo API刪除風機失敗，回退到模擬數據", error)
-      // 回退到模擬數據操作
+      console.warn("Failed to delete turbine using Maximo API, falling back to mock data", error)
+      // Fall back to mock data operation
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 600))
   const turbines = mockTurbines[projectId] || []
   const index = turbines.findIndex((t) => t.id === turbineId)
@@ -461,20 +597,20 @@ export async function deleteTurbine(projectId: string, turbineId: string): Promi
   }
 }
 
-// API 函數 - 任務管理
+// API Functions - Task Management
 export async function fetchTasks(projectId: string): Promise<Task[]> {
   if (API_CONFIG.useMaximoAPI) {
     try {
       return await callMaximoAPI<Task[]>(API_ENDPOINTS.getTasks, { projectId })
     } catch (error) {
-      console.warn("使用Maximo API獲取任務失敗，回退到模擬數據", error)
+      console.warn("Failed to fetch tasks using Maximo API, falling back to mock data", error)
       return mockTasks[projectId] || []
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 600))
-  // 確保每個任務都有 turbineIds 屬性
+  // Ensure each task has turbineIds property
   const tasks = mockTasks[projectId] || []
   return tasks.map(task => ({
     ...task,
@@ -485,24 +621,24 @@ export async function fetchTasks(projectId: string): Promise<Task[]> {
 export async function createTask(task: Task): Promise<Task> {
   if (API_CONFIG.useMaximoAPI) {
     try {
-      // 確保有 turbineIds 屬性
+      // Ensure task has turbineIds property
       const taskWithTurbineIds = {
         ...task,
         turbineIds: task.turbineIds || []
       }
       return await callMaximoAPI<Task>(API_ENDPOINTS.createTask, taskWithTurbineIds)
     } catch (error) {
-      console.warn("使用Maximo API創建任務失敗，回退到模擬數據", error)
-      // 回退到模擬數據操作
+      console.warn("Failed to create task using Maximo API, falling back to mock data", error)
+      // Fall back to mock data operation
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 700))
   if (!mockTasks[task.projectId]) {
     mockTasks[task.projectId] = []
   }
-  // 確保有 turbineIds 屬性
+  // Ensure task has turbineIds property
   const taskWithTurbineIds = {
     ...task,
     turbineIds: task.turbineIds || []
@@ -514,23 +650,23 @@ export async function createTask(task: Task): Promise<Task> {
 export async function updateTask(task: Task): Promise<Task> {
   if (API_CONFIG.useMaximoAPI) {
     try {
-      // 確保有 turbineIds 屬性
+      // Ensure task has turbineIds property
       const taskWithTurbineIds = {
         ...task,
         turbineIds: task.turbineIds || []
       }
       return await callMaximoAPI<Task>(API_ENDPOINTS.updateTask, taskWithTurbineIds)
     } catch (error) {
-      console.warn("使用Maximo API更新任務失敗，回退到模擬數據", error)
-      // 回退到模擬數據操作
+      console.warn("Failed to update task using Maximo API, falling back to mock data", error)
+      // Fall back to mock data operation
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 600))
   const tasks = mockTasks[task.projectId] || []
   const index = tasks.findIndex((t) => t.id === task.id)
-  // 確保有 turbineIds 屬性
+  // Ensure task has turbineIds property
   const taskWithTurbineIds = {
     ...task,
     turbineIds: task.turbineIds || []
@@ -547,12 +683,12 @@ export async function deleteTask(taskId: string): Promise<void> {
       await callMaximoAPI<void>(API_ENDPOINTS.deleteTask, { taskId })
       return
     } catch (error) {
-      console.warn("使用Maximo API刪除任務失敗，回退到模擬數據", error)
-      // 回退到模擬數據操作
+      console.warn("Failed to delete task using Maximo API, falling back to mock data", error)
+      // Fall back to mock data operation
     }
   }
   
-  // 模擬 API 延遲
+  // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 500))
   Object.keys(mockTasks).forEach((projectId) => {
     const tasks = mockTasks[projectId]
@@ -561,4 +697,182 @@ export async function deleteTask(taskId: string): Promise<void> {
       tasks.splice(index, 1)
     }
   })
+}
+
+// 獲取任務類型
+export async function fetchTaskTypes(): Promise<TaskType[]> {
+  if (API_CONFIG.useMaximoAPI) {
+    console.log('Attempting to get task types using API');
+    try {
+      return await callMaximoAPI<TaskType[]>(API_ENDPOINTS.getTaskTypes)
+    } catch (error) {
+      console.warn("Failed to fetch task types using Maximo API, falling back to default types", error)
+      return [...defaultTaskTypes]
+    }
+  }
+  
+  // Simulate API delay
+  await new Promise((resolve) => setTimeout(resolve, 600))
+  return [...defaultTaskTypes]
+}
+
+// 新增任務類型
+export async function createTaskType(taskType: TaskType): Promise<TaskType> {
+  if (API_CONFIG.useMaximoAPI) {
+    try {
+      return await callMaximoAPI<TaskType>(API_ENDPOINTS.newTaskType, taskType)
+    } catch (error) {
+      console.warn("Failed to create task type using Maximo API, falling back to local operation", error)
+      // Fall back to local operation
+    }
+  }
+  
+  // Simulate API delay
+  await new Promise((resolve) => setTimeout(resolve, 700))
+  
+  // Generate a unique ID for the task type if not provided
+  const newTaskType = {
+    ...taskType,
+    value: taskType.value || `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
+  }
+  
+  // 在本地情況下，模擬成功操作
+  return newTaskType
+}
+
+// 更新任務類型 - 使用新增API替代
+export async function updateTaskType(taskType: TaskType): Promise<TaskType> {
+  // 使用新增API完成更新操作
+  return await createTaskType(taskType);
+}
+
+// 刪除任務類型
+export async function deleteTaskType(taskTypeValue: string): Promise<void> {
+  if (API_CONFIG.useMaximoAPI) {
+    try {
+      await callMaximoAPI<void>(API_ENDPOINTS.deleteTaskType, { value: taskTypeValue })
+      return
+    } catch (error) {
+      console.warn("Failed to delete task type using Maximo API, falling back to local operation", error)
+      // Fall back to local operation
+    }
+  }
+  
+  // Simulate API delay
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  
+  // 在本地情況下，不需要做任何實際操作，僅模擬API延遲
+}
+
+// 獲取風場電纜數據
+export async function fetchCables(projectId: string): Promise<Cable[]> {
+  if (API_CONFIG.useMaximoAPI) {
+    console.log('Attempting to get cables using API');
+    try {
+      return await callMaximoAPI<Cable[]>(API_ENDPOINTS.getCables, { projectId })
+    } catch (error) {
+      console.warn("Failed to fetch cables using Maximo API, falling back to mock data", error)
+      // 使用模擬數據作為備用選項
+      return getSimulatedCables(projectId);
+    }
+  }
+  
+  // 不使用API時，返回模擬數據
+  return getSimulatedCables(projectId);
+}
+
+// 獲取風場變電站數據
+export async function fetchSubstations(projectId: string): Promise<Substation[]> {
+  if (API_CONFIG.useMaximoAPI) {
+    try {
+      return await callMaximoAPI<Substation[]>(API_ENDPOINTS.getSubstations, { projectId })
+    } catch (error) {
+      console.warn("Failed to fetch substations using Maximo API, falling back to mock data", error)
+      // 使用模擬數據作為備用選項
+      return getSimulatedSubstations(projectId);
+    }
+  }
+  
+  // 不使用API時，返回模擬數據
+  return getSimulatedSubstations(projectId);
+}
+
+// 模擬電纜數據
+function getSimulatedCables(projectId: string): Promise<Cable[]> {
+  // Simulate API delay
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // 返回模擬數據
+      resolve([
+        {
+          id: 'cable-1',
+          sourceId: '1',
+          targetId: '2',
+          sourceType: 'turbine',
+          targetType: 'turbine',
+          status: 'normal',
+          powerFlow: 1.5,
+        },
+        {
+          id: 'cable-2',
+          sourceId: '2',
+          targetId: '3',
+          sourceType: 'turbine',
+          targetType: 'turbine',
+          status: 'normal',
+          powerFlow: 2.8,
+        },
+        {
+          id: 'cable-3',
+          sourceId: '3',
+          targetId: 'sub-1',
+          sourceType: 'turbine',
+          targetType: 'substation',
+          status: 'normal',
+          powerFlow: 4.2,
+        },
+        {
+          id: 'cable-4',
+          sourceId: '4',
+          targetId: '5',
+          sourceType: 'turbine',
+          targetType: 'turbine',
+          status: 'warning',
+          powerFlow: 1.1,
+        },
+        {
+          id: 'cable-5',
+          sourceId: '5',
+          targetId: 'sub-1',
+          sourceType: 'turbine',
+          targetType: 'substation',
+          status: 'normal',
+          powerFlow: 3.7,
+        },
+      ]);
+    }, 500); // 模擬網絡延遲
+  });
+}
+
+// 模擬變電站數據
+function getSimulatedSubstations(projectId: string): Promise<Substation[]> {
+  // Simulate API delay
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // 返回模擬數據
+      resolve([
+        {
+          id: 'sub-1',
+          name: '海上變電站 A',
+          coordinates: {
+            lat: 23.7,
+            lng: 121.4
+          },
+          capacity: 250,
+          currentLoad: 185.2,
+          status: 'normal'
+        },
+      ]);
+    }, 500); // 模擬網絡延遲
+  });
 }

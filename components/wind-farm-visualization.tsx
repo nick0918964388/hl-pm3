@@ -13,14 +13,14 @@ interface WindFarmVisualizationProps {
 
 export function WindFarmVisualization({ projectName, turbines, tasks, currentDate, dateRange }: WindFarmVisualizationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  // 添加懸停狀態
+  // Add hover state
   const [hoveredTurbine, setHoveredTurbine] = useState<string | null>(null)
   const [hoveredPosition, setHoveredPosition] = useState<{ x: number; y: number } | null>(null)
   const [turbineTasksInfo, setTurbineTasksInfo] = useState<Task[]>([])
-  // 保存所有風機位置信息以供滑鼠事件使用
+  // Save all turbine position information for mouse events
   const [allTurbinePositions, setAllTurbinePositions] = useState<{ id: string; x: number; y: number; code: string; displayName: string }[]>([])
 
-  // 獲取專案中的所有任務名稱而非類型
+  // Get all task names in the project rather than types
   const taskNames = useMemo(() => {
     const names = new Set<string>()
     tasks.forEach((task) => {
@@ -29,19 +29,19 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     return Array.from(names)
   }, [tasks])
 
-  // 任務名稱對應的顏色映射
+  // Color mapping for task names
   const taskColorMap = useMemo(() => {
     const colors = [
-      "#4CAF50", // 綠色
-      "#2196F3", // 藍色
-      "#FFC107", // 黃色
-      "#9C27B0", // 紫色
-      "#FF5722", // 橙色
-      "#3F51B5", // 靛藍色
-      "#00BCD4", // 青色
-      "#E91E63", // 粉紅色
-      "#8BC34A", // 淺綠色
-      "#FF9800", // 琥珀色
+      "#4CAF50", // Green
+      "#2196F3", // Blue
+      "#FFC107", // Yellow
+      "#9C27B0", // Purple
+      "#FF5722", // Orange
+      "#3F51B5", // Indigo
+      "#00BCD4", // Cyan
+      "#E91E63", // Pink
+      "#8BC34A", // Light green
+      "#FF9800", // Amber
     ]
     
     const colorMap: { [key: string]: string } = {}
@@ -52,7 +52,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     return colorMap
   }, [taskNames])
 
-  // 在drawTitleBox函數中，使用傳入的projectName
+  // In drawTitleBox function, use the passed projectName
   const drawTitleBox = (ctx: CanvasRenderingContext2D, title: string, x: number, y: number) => {
     ctx.strokeStyle = "#0066cc"
     ctx.lineWidth = 1
@@ -64,49 +64,49 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     ctx.fillText(title, x + 120, y + 5)
   }
 
-  // 監聽滑鼠移動
+  // Listen for mouse movement
   useEffect(() => {
     if (!canvasRef.current) return
     
     const canvas = canvasRef.current
     
-    // 滑鼠移動處理函數
+    // Mouse movement handler function
     const handleMouseMove = (event: MouseEvent) => {
       if (!canvas) return
       
-      // 獲取滑鼠在畫布上的位置
+      // Get mouse position on canvas
       const rect = canvas.getBoundingClientRect()
       const canvasWidth = canvas.width
       const canvasHeight = canvas.height
       const displayWidth = rect.width
       const displayHeight = rect.height
       
-      // 計算縮放比例
+      // Calculate scaling ratio
       const scaleX = canvasWidth / displayWidth
       const scaleY = canvasHeight / displayHeight
       
-      // 獲取滑鼠在畫布坐標系中的精確位置
+      // Get precise mouse position in canvas coordinate system
       const x = (event.clientX - rect.left) * scaleX
       const y = (event.clientY - rect.top) * scaleY
       
-      // 檢查滑鼠是否在任何風機上
+      // Check if mouse is over any turbine
       let isOverTurbine = false
       
       for (const turbine of allTurbinePositions) {
         const distance = Math.sqrt(Math.pow(x - turbine.x, 2) + Math.pow(y - turbine.y, 2))
-        if (distance <= 35) { // 風機圓圈半徑
+        if (distance <= 35) { // Turbine circle radius
           isOverTurbine = true
           
           if (hoveredTurbine !== turbine.id) {
-            // 更新懸停的風機ID
+            // Update hovered turbine ID
             setHoveredTurbine(turbine.id)
             setHoveredPosition({ x: turbine.x, y: turbine.y - 50 })
             
-            // 獲取該風機的任務信息
+            // Get task information for this turbine
             const turbineTasks = tasks.filter(task => task.turbineIds.includes(turbine.id))
             setTurbineTasksInfo(turbineTasks)
             
-            // 改變鼠標樣式
+            // Change cursor style
             canvas.style.cursor = 'pointer'
           }
           break
@@ -114,7 +114,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
       }
       
       if (!isOverTurbine && hoveredTurbine !== null) {
-        // 滑鼠移出風機
+        // Mouse moved out of turbine
         setHoveredTurbine(null)
         setHoveredPosition(null)
         setTurbineTasksInfo([])
@@ -122,16 +122,16 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
       }
     }
     
-    // 添加事件監聽器
+    // Add event listener
     canvas.addEventListener('mousemove', handleMouseMove)
     
-    // 清理函數
+    // Cleanup function
     return () => {
       canvas.removeEventListener('mousemove', handleMouseMove)
     }
   }, [hoveredTurbine, tasks, allTurbinePositions])
 
-  // 在useEffect中，根據projectName動態調整風機位置
+  // In useEffect, dynamically adjust turbine positions based on projectName
   useEffect(() => {
     if (!canvasRef.current) return
 
@@ -139,18 +139,18 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    // 根據專案ID動態調整風機位置
+    // Dynamically adjust turbine positions based on project ID
     let turbinePositions: { id: string; x: number; y: number; code: string; displayName: string }[] = []
 
-    // 根據不同專案設置不同的風機佈局
+    // Set different turbine layouts based on different projects
     if (projectName.includes("HAI LONG")) {
-      // 海龍風場佈局 - 增加間距
+      // Hai Long wind farm layout - increase spacing
       const spacing = 140
       const startX = 120
       const startY = 220
       
       turbinePositions = [
-        // 第一行 (WB030, WB050, WB170, WB090, WB150, WB130, WB110, WB070, WB010)
+        // First row (WB030, WB050, WB170, WB090, WB150, WB130, WB110, WB070, WB010)
         { id: "WB030", x: startX, y: startY, code: "HL21-A01-A", displayName: "HL21-A01-A" },
         { id: "WB050", x: startX + spacing, y: startY, code: "HL21-B01-A", displayName: "HL21-B01-A" },
         { id: "WB170", x: startX + spacing * 2, y: startY, code: "HL22-C01-B", displayName: "HL22-C01-B" },
@@ -161,7 +161,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         { id: "WB070", x: startX + spacing * 7, y: startY, code: "HL21-H01-A", displayName: "HL21-H01-A" },
         { id: "WB010", x: startX + spacing * 8, y: startY, code: "HL21-J01-A", displayName: "HL21-J01-A" },
 
-        // 第二行 (WB031, WB051, WB171, WB091, WB151, WB131, WB111, WB071, WB011)
+        // Second row (WB031, WB051, WB171, WB091, WB151, WB131, WB111, WB071, WB011)
         { id: "WB031", x: startX, y: startY + spacing, code: "HL21-A02-A", displayName: "HL21-A02-A" },
         { id: "WB051", x: startX + spacing, y: startY + spacing, code: "HL21-B02-A", displayName: "HL21-B02-A" },
         { id: "WB171", x: startX + spacing * 2, y: startY + spacing, code: "HL22-C02-B", displayName: "HL22-C02-B" },
@@ -172,7 +172,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         { id: "WB071", x: startX + spacing * 7, y: startY + spacing, code: "HL21-H02-A", displayName: "HL21-H02-A" },
         { id: "WB011", x: startX + spacing * 8, y: startY + spacing, code: "HL21-J02-A", displayName: "HL21-J02-A" },
 
-        // 第三行 (WB032, WB052, WB172, WB092, WB152, WB132, WB112, WB072, WB012)
+        // Third row (WB032, WB052, WB172, WB092, WB152, WB132, WB112, WB072, WB012)
         { id: "WB032", x: startX, y: startY + spacing * 2, code: "HL21-A03-A", displayName: "HL21-A03-A" },
         { id: "WB052", x: startX + spacing, y: startY + spacing * 2, code: "HL21-B03-A", displayName: "HL21-B03-A" },
         { id: "WB172", x: startX + spacing * 2, y: startY + spacing * 2, code: "HL22-C03-B", displayName: "HL22-C03-B" },
@@ -183,7 +183,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         { id: "WB072", x: startX + spacing * 7, y: startY + spacing * 2, code: "HL21-H03-A", displayName: "HL21-H03-A" },
         { id: "WB012", x: startX + spacing * 8, y: startY + spacing * 2, code: "HL21-J03-A", displayName: "HL21-J03-A" },
 
-        // 第四行 (WB033, -, WB173, WB093, WB153, WB133, -, WB073, WB013)
+        // Fourth row (WB033, -, WB173, WB093, WB153, WB133, -, WB073, WB013)
         { id: "WB033", x: startX, y: startY + spacing * 3, code: "HL21-A04-A", displayName: "HL21-A04-A" },
         { id: "WB173", x: startX + spacing * 2, y: startY + spacing * 3, code: "HL22-C04-B", displayName: "HL22-C04-B" },
         { id: "WB093", x: startX + spacing * 3, y: startY + spacing * 3, code: "HL21-D04-A", displayName: "HL21-D04-A" },
@@ -191,14 +191,14 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         { id: "WB133", x: startX + spacing * 5, y: startY + spacing * 3, code: "HL22-F04-B", displayName: "HL22-F04-B" },
         { id: "WB013", x: startX + spacing * 8, y: startY + spacing * 3, code: "HL21-J04-A", displayName: "HL21-J04-A" },
 
-        // 第五行 (WB034, -, -, WB094, -, WB134, -, -, WB014)
+        // Fifth row (WB034, -, -, WB094, -, WB134, -, -, WB014)
         { id: "WB034", x: startX, y: startY + spacing * 4, code: "HL21-A05-A", displayName: "HL21-A05-A" },
         { id: "WB094", x: startX + spacing * 3, y: startY + spacing * 4, code: "HL21-D05-A", displayName: "HL21-D05-A" },
         { id: "WB134", x: startX + spacing * 5, y: startY + spacing * 4, code: "HL22-F05-B", displayName: "HL22-F05-B" },
         { id: "WB014", x: startX + spacing * 8, y: startY + spacing * 4, code: "HL21-J05-A", displayName: "HL21-J05-A" },
       ]
       
-      // 使用turbines數據更新displayName
+      // Use turbines data to update displayName
       turbinePositions = turbinePositions.map(position => {
         const turbine = turbines.find(t => t.id === position.id)
         return {
@@ -207,7 +207,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         }
       })
     } else if (projectName.includes("FORMOSA")) {
-      // 福爾摩沙風場佈局 - 5x5網格, 調整間距
+      // Formosa wind farm layout - 5x5 grid, adjust spacing
       const gridSize = 5
       const startX = 250
       const startY = 250
@@ -230,7 +230,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         }
       }
       
-      // 使用turbines數據更新turbinePositions
+      // Use turbines data to update turbinePositions
       turbinePositions = turbinePositions.map(position => {
         const turbine = turbines.find(t => t.id === position.id)
         return {
@@ -239,7 +239,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         }
       })
     } else if (projectName.includes("CHANGHUA")) {
-      // 大彰化風場佈局 - 6x5網格, 調整間距
+      // Da Changhua wind farm layout - 6x5 grid, adjust spacing
       const cols = 6
       const rows = 5
       const startX = 180
@@ -263,7 +263,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         }
       }
       
-      // 使用turbines數據更新turbinePositions
+      // Use turbines data to update turbinePositions
       turbinePositions = turbinePositions.map(position => {
         const turbine = turbines.find(t => t.id === position.id)
         return {
@@ -272,7 +272,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         }
       })
     } else if (projectName.includes("YUNLIN")) {
-      // 雲林風場佈局 - 4x5網格, 調整間距
+      // Yunlin wind farm layout - 4x5 grid, adjust spacing
       const cols = 4
       const rows = 5
       const startX = 400
@@ -296,7 +296,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         }
       }
       
-      // 使用turbines數據更新turbinePositions
+      // Use turbines data to update turbinePositions
       turbinePositions = turbinePositions.map(position => {
         const turbine = turbines.find(t => t.id === position.id)
         return {
@@ -305,17 +305,17 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         }
       })
     } else {
-      // 默認佈局 - 使用傳入的turbines數據, 調整間距
+      // Default layout - use passed turbines data, adjust spacing
       const startX = 250
       const startY = 250
       const spacing = 180
 
-      // 創建一個映射來存儲每個風機的位置
+      // Create a map to store each turbine's position
       const turbineMap = new Map<string, { id: string; x: number; y: number; code: string; displayName: string }>()
 
-      // 首先處理所有風機
+      // First process all turbines
       turbines.forEach((turbine) => {
-        // 使用風機的實際位置來確定其在畫布上的位置
+        // Use turbine's actual position to determine its position on the canvas
         const x = startX + turbine.location.x * spacing
         const y = startY + turbine.location.y * spacing
 
@@ -328,82 +328,82 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         })
       })
 
-      // 將映射轉換為數組
+      // Convert map to array
       turbinePositions = Array.from(turbineMap.values())
     }
 
-    // 更新風機位置狀態，供滑鼠事件使用
+    // Update turbine position state, for mouse events
     setAllTurbinePositions(turbinePositions)
 
-    // 計算最大的風機Y位置，用於動態調整Canvas高度
-    const maxTurbineY = Math.max(...turbinePositions.map(t => t.y)) + 100  // 加上額外空間
+    // Calculate maximum turbine Y position, for dynamic adjustment of Canvas height
+    const maxTurbineY = Math.max(...turbinePositions.map(t => t.y)) + 100  // Add extra space
     
-    // 設置畫布大小 - 調整為填滿螢幕，並根據風機位置動態調整高度
-    const minHeight = 900; // 最小高度
-    canvas.width = 1600
+    // Set canvas size - adjust to fill screen, and dynamically adjust height based on turbine positions
+    const minHeight = 900; // Minimum height
+    canvas.width = 1920   // More standard width, still ensuring all content is visible
     canvas.height = Math.max(minHeight, maxTurbineY);
 
-    // 清除畫布
+    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // 繪製標題框
+    // Draw title box
     drawTitleBox(ctx, projectName, 120, 85)
 
-    // 繪製 OSS - 將其位置調整到Canvas中心
+    // Draw OSS - adjust its position to Canvas center
     const ossX = canvas.width / 2
     const ossY = 100
     drawOSS(ctx, ossX, ossY)
 
-    // 繪製匯出線
+    // Draw export lines
     drawExportLines(ctx, ossX, ossY)
 
-    // 繪製連接線 - 先畫線再畫風機
+    // Draw connection lines - draw lines first, then draw turbines
     drawConnections(ctx, ossX, ossY, turbinePositions, tasks, currentDate)
 
-    // 繪製風機
+    // Draw turbines
     turbinePositions.forEach((turbine) => {
-      // 獲取該風機的任務
+      // Get task for this turbine
       const turbineTasks = tasks.filter((task) => task.turbineIds.includes(turbine.id))
 
-      // 計算每種任務名稱的完成情況
+      // Calculate task completion by name
       const taskCompletionByName = calculateTaskCompletionByName(turbineTasks, currentDate, taskNames)
 
       drawTurbine(ctx, turbine.x, turbine.y, turbine.id, turbine.displayName, taskCompletionByName, taskNames)
     })
 
-    // 繪製圖例 - 調整至畫面右側區域
-    const legendX = canvas.width - 300;  // 從畫布右側計算位置
-    const legendY = 250;                 // 垂直位置約為中間
+    // Draw legend - adjust to right top corner of screen area
+    const legendX = canvas.width - 270;  // Calculate position from right side of canvas
+    const legendY = 30;                 // Position at top of the canvas
     drawLegend(ctx, legendX, legendY, taskNames)
     
-    // 如果有懸停的風機，繪製信息框
+    // If there's a hovered turbine, draw info box
     if (hoveredTurbine && hoveredPosition) {
       drawTurbineInfo(ctx, hoveredPosition.x, hoveredPosition.y, turbineTasksInfo, currentDate)
     }
   }, [projectName, turbines, tasks, currentDate, taskNames, hoveredTurbine, hoveredPosition, turbineTasksInfo, taskColorMap, dateRange])
 
-  // 計算每種任務名稱的完成情況
+  // Calculate task completion by name
   const calculateTaskCompletionByName = (turbineTasks: Task[], currentDate: Date, taskNames: string[]) => {
     const result: { [key: string]: boolean } = {}
 
-    // 初始化所有任務名稱為未完成
+    // Initialize all task names as not completed
     taskNames.forEach(name => {
       result[name] = false
     })
 
-    // 檢查風機關聯的每個任務
+    // Check each task associated with each turbine
     turbineTasks.forEach((task) => {
       const taskEndDate = new Date(task.endDate)
       
-      // 只檢查任務完成狀態，忽略任務開始時間
-      // 如果有日期範圍，則檢查任務結束日期是否在範圍內且狀態為已完成
+      // Check task completion status, ignoring task start time
+      // If there's a date range, check if task end date is within range and status is completed
       if (dateRange) {
-        // 只有當任務完成日期在選擇的範圍內，且任務狀態為已完成時，才標記為完成
+        // Only mark as completed if task end date is within selected range and task status is completed
         if (taskEndDate <= dateRange.end && task.status === "completed") {
           result[task.name] = true
         }
       } else {
-        // 使用當前日期作為參考
+        // Use current date as reference
         if (taskEndDate <= currentDate && task.status === "completed") {
           result[task.name] = true
         }
@@ -413,117 +413,117 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     return result
   }
 
-  // 繪製風機任務信息框
+  // Draw turbine task info box
   const drawTurbineInfo = (ctx: CanvasRenderingContext2D, x: number, y: number, turbineTasks: Task[], currentDate: Date) => {
-    // 排序任務，按照開始日期先後排序
+    // Sort tasks, by start date
     const sortedTasks = [...turbineTasks].sort((a, b) => 
       new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
     )
     
-    // 計算信息框尺寸
-    const boxWidth = 210  // 更窄的框寬度
-    const lineHeight = 18  // 更小的行高
-    const padding = 6     // 更小的內邊距
-    const titleHeight = 24  // 標題高度
-    const contentPadding = 10  // 分隔線和內容之間的間距
+    // Calculate info box size
+    const boxWidth = 210  // Narrower box width
+    const lineHeight = 18  // Smaller line height
+    const padding = 6     // Smaller inner padding
+    const titleHeight = 24  // Title height
+    const contentPadding = 10  // Space between line and content
     
-    // 動態計算高度，基於實際任務數量，但最多顯示5個
+    // Dynamic height calculation, based on actual task count, but max display 5
     const shownTasks = Math.min(sortedTasks.length, 5)
     const boxHeight = shownTasks === 0 ? 
-      65 : // 沒有任務時的高度
+      65 : // Height when no tasks
       titleHeight + contentPadding + (shownTasks * lineHeight) + (sortedTasks.length > 5 ? lineHeight : 0) + padding * 2
     
-    // 調整信息框位置
+    // Adjust info box position
     let infoX = x - boxWidth / 2
-    let infoY = y - boxHeight - 10  // 將信息框移到風機上方
+    let infoY = y - boxHeight - 10  // Move info box above turbine
     
-    // 確保信息框不會超出畫布
+    // Ensure info box doesn't go out of canvas
     if (infoX < 10) infoX = 10
     if (infoX + boxWidth > ctx.canvas.width - 10) infoX = ctx.canvas.width - boxWidth - 10
     if (infoY < 10) infoY = 10
     if (infoY + boxHeight > ctx.canvas.height - 10) infoY = ctx.canvas.height - boxHeight - 10
     
-    // 繪製信息框背景
+    // Draw info box background
     ctx.fillStyle = "rgba(255, 255, 255, 0.97)"
     ctx.fillRect(infoX, infoY, boxWidth, boxHeight)
     ctx.strokeStyle = "#0066cc"
     ctx.lineWidth = 1
     ctx.strokeRect(infoX, infoY, boxWidth, boxHeight)
     
-    // 繪製標題
+    // Draw title
     ctx.font = "bold 12px Arial"
     ctx.fillStyle = "#000000"
     ctx.textAlign = "center"
-    ctx.fillText("任務資訊", infoX + boxWidth / 2, infoY + 16)
+    ctx.fillText("Task Information", infoX + boxWidth / 2, infoY + 16)
     
-    // 繪製分隔線
+    // Draw separator line
     ctx.beginPath()
     ctx.moveTo(infoX, infoY + titleHeight)
     ctx.lineTo(infoX + boxWidth, infoY + titleHeight)
     ctx.strokeStyle = "#cccccc"
     ctx.stroke()
     
-    // 計算內容起始Y坐標 - 分隔線以下，加上額外間距
+    // Calculate content start Y coordinate - below separator line, add extra space
     const contentStartY = infoY + titleHeight + contentPadding
     
-    // 繪製任務列表
+    // Draw task list
     ctx.font = "11px Arial"
     ctx.textAlign = "left"
     
-    // 計算最大顯示任務數，避免過多
+    // Calculate max display task count, avoid too many
     const maxTasksToShow = 5
     const tasksToShow = sortedTasks.length > maxTasksToShow ? 
       sortedTasks.slice(0, maxTasksToShow) : sortedTasks
     
     tasksToShow.forEach((task, index) => {
-      // 使用內容起始Y坐標計算每個任務項的位置
+      // Use content start Y coordinate to calculate each task item position
       const taskY = contentStartY + index * lineHeight
       
-      // 確定任務狀態
+      // Determine task status
       const taskEndDate = new Date(task.endDate)
       const isCompleted = taskEndDate <= currentDate && task.status === "completed"
       
-      // 根據任務狀態設置顏色
+      // Set color based on task status
       ctx.fillStyle = isCompleted ? 
         taskColorMap[task.name] || "#006400" :
         "#333333"
       
-      // 繪製任務名稱
+      // Draw task name
       const displayName = task.name.length > 12 ? task.name.substring(0, 10) + "..." : task.name
       ctx.fillText(`• ${displayName}`, infoX + padding, taskY)
       
-      // 日期格式
+      // Date format
       const endDate = new Date(task.endDate).toLocaleDateString(undefined, {month: 'numeric', day: 'numeric'})
       ctx.textAlign = "right"
-      ctx.fillText(`完工: ${endDate}`, infoX + boxWidth - padding, taskY)
-      ctx.textAlign = "left" // 重置對齊方式
+      ctx.fillText(`Completed: ${endDate}`, infoX + boxWidth - padding, taskY)
+      ctx.textAlign = "left" // Reset alignment
     })
     
-    // 如果有更多任務未顯示，顯示省略信息
+    // If there are more tasks not displayed, show omitted information
     if (sortedTasks.length > maxTasksToShow) {
       const moreY = contentStartY + maxTasksToShow * lineHeight
       ctx.fillStyle = "#222222"
-      ctx.fillText(`...還有${sortedTasks.length - maxTasksToShow}個任務`, infoX + padding, moreY)
+      ctx.fillText(`...${sortedTasks.length - maxTasksToShow} more tasks`, infoX + padding, moreY)
     }
     
-    // 如果沒有任務，顯示提示信息
+    // If no tasks, show prompt information
     if (sortedTasks.length === 0) {
       ctx.fillStyle = "#222222"
       ctx.textAlign = "center"
-      ctx.fillText("該風機沒有任務", infoX + boxWidth / 2, contentStartY + 6) // 調整無任務提示的位置
+      ctx.fillText("This turbine has no tasks", infoX + boxWidth / 2, contentStartY + 6) // Adjust prompt position for no tasks
     }
   }
 
-  // 繪製 OSS
+  // Draw OSS
   const drawOSS = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
-    // 繪製 OSS 圓形外框
+    // Draw OSS circle outer frame
     ctx.beginPath()
     ctx.arc(x, y, 30, 0, Math.PI * 2)
     ctx.strokeStyle = "#0066cc"
-    ctx.lineWidth = 2.5 // 加粗線條
+    ctx.lineWidth = 2.5 // Thicker line
     ctx.stroke()
 
-    // 尋找OSS相關任務
+    // Find OSS related tasks
     const ossRelatedTasks = tasks.filter(task => task.type === "operation");
     const ossCompletedTasks = ossRelatedTasks.filter(task => {
       const taskEndDate = new Date(task.endDate);
@@ -534,20 +534,20 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
       }
     });
 
-    // 繪製 OSS 內部 - 分三等份
-    const totalSegments = 3; // 固定為三等份
+    // Draw OSS inner - divide into three parts
+    const totalSegments = 3; // Fixed to three parts
     const segments = Array(totalSegments).fill(null).map((_, index) => {
-      // 檢查是否有對應的已完成OSS任務
+      // Check if there's a completed OSS task corresponding
       const isCompleted = index < ossCompletedTasks.length;
       return {
-        color: isCompleted ? "#4CAF50" : "#FFFFFF",  // 綠色表示完成，白色表示未完成
+        color: isCompleted ? "#4CAF50" : "#FFFFFF",  // Green represents completed, white represents not completed
         percentage: 100 / totalSegments
       };
     });
 
     drawPieChart(ctx, x, y, 30, segments)
 
-    // 繪製內圓
+    // Draw inner circle
     ctx.beginPath()
     ctx.arc(x, y, 20, 0, Math.PI * 2)
     ctx.fillStyle = "white"
@@ -556,16 +556,16 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     ctx.lineWidth = 1
     ctx.stroke()
 
-    // 繪製 OSS 文字
+    // Draw OSS text
     ctx.font = "bold 14px Arial"
     ctx.fillStyle = "#0066cc"
     ctx.textAlign = "center"
     ctx.fillText("OSS", x, y + 5)
   }
 
-  // 繪製匯出線
+  // Draw export lines
   const drawExportLines = (ctx: CanvasRenderingContext2D, ossX: number, ossY: number) => {
-    // HL2A-EXPORT 線
+    // HL2A-EXPORT line
     ctx.beginPath()
     ctx.moveTo(ossX + 30, ossY - 10)
     ctx.lineTo(ossX + 500, ossY - 10)
@@ -573,13 +573,13 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     ctx.lineWidth = 2
     ctx.stroke()
 
-    // 文字
+    // Text
     ctx.font = "12px Arial"
     ctx.fillStyle = "#000"
     ctx.textAlign = "left"
-    ctx.fillText("EXPORT-A", ossX + 50, ossY - 15)
+    ctx.fillText("HL2A-EXPORT", ossX + 50, ossY - 15)
 
-    // HL2B-EXPORT 線
+    // HL2B-EXPORT line
     ctx.beginPath()
     ctx.moveTo(ossX + 30, ossY + 10)
     ctx.lineTo(ossX + 500, ossY + 10)
@@ -587,11 +587,11 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     ctx.lineWidth = 2
     ctx.stroke()
 
-    // 文字
-    ctx.fillText("EXPORT-B", ossX + 50, ossY + 25)
+    // Text
+    ctx.fillText("HL2B-EXPORT", ossX + 50, ossY + 25)
   }
 
-  // 繪製連接線
+  // Draw connection lines
   const drawConnections = (
     ctx: CanvasRenderingContext2D,
     ossX: number,
@@ -600,18 +600,18 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     tasks: Task[],
     currentDate: Date,
   ) => {
-    // 確定哪些風機已經完成電纜鋪設任務
+    // Determine which turbines have completed cable laying tasks
     const completedCablesTurbines = new Set<string>()
     tasks.forEach((task) => {
       if (task.type === "cables" && task.status === "completed") {
-        // 如果有日期範圍，則檢查任務結束日期是否在範圍內
+        // If there's a date range, check if task end date is within range
         if (dateRange) {
           const taskEndDate = new Date(task.endDate)
           if (taskEndDate <= dateRange.end) {
             task.turbineIds.forEach((id) => completedCablesTurbines.add(id))
           }
         } else {
-          // 使用當前日期
+          // Use current date
           if (new Date(task.endDate) <= currentDate) {
             task.turbineIds.forEach((id) => completedCablesTurbines.add(id))
           }
@@ -619,21 +619,35 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
       }
     })
 
-    // 先繪製從 OSS 到第一行風機的連接線
+    // First row turbines
     const firstRowTurbines = turbinePositions.filter((t) => t.y === Math.min(...turbinePositions.map((tp) => tp.y)))
+    // Sort first row by x position to get column index
+    const sortedFirstRow = [...firstRowTurbines].sort((a, b) => a.x - b.x)
 
+    // First draw connection lines from OSS to first row turbines
     firstRowTurbines.forEach((turbine) => {
       ctx.beginPath()
       ctx.moveTo(ossX, ossY + 30)
       ctx.lineTo(turbine.x, turbine.y - 25)
 
-      const isCompleted = completedCablesTurbines.has(turbine.id)
-      if (isCompleted) {
+      // 找出這個風機在第一行中的列索引
+      const columnIndex = sortedFirstRow.findIndex(t => t.x === turbine.x)
+      
+      // 特殊處理第0列和第3列，其他都改為藍色實線
+      if (columnIndex === 0 || columnIndex === 3) {
+        // 依照原來的邏輯處理這兩列
+        const isCompleted = completedCablesTurbines.has(turbine.id)
+        if (isCompleted) {
+          ctx.strokeStyle = "#0066cc"
+          ctx.setLineDash([])
+        } else {
+          ctx.strokeStyle = "#cc0000"
+          ctx.setLineDash([5, 5])
+        }
+      } else {
+        // 其他風機連接線都改為深藍色實線
         ctx.strokeStyle = "#0066cc"
         ctx.setLineDash([])
-      } else {
-        ctx.strokeStyle = "#cc0000"
-        ctx.setLineDash([5, 5])
       }
 
       ctx.lineWidth = 1.5
@@ -641,8 +655,8 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
       ctx.setLineDash([])
     })
 
-    // 按列繪製垂直連接線
-    // 首先，將風機按 x 坐標分組
+    // Draw vertical connection lines by column
+    // First, group turbines by x coordinate
     const turbinesByColumn: { [key: number]: { id: string; x: number; y: number; code: string; displayName: string }[] } = {}
 
     turbinePositions.forEach((turbine) => {
@@ -652,11 +666,20 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
       turbinesByColumn[turbine.x].push(turbine)
     })
 
-    // 對每一列的風機按 y 坐標排序
+    // 對 x 坐標排序以獲取列索引
+    const sortedXValues = [...new Set(turbinePositions.map(t => t.x))].sort((a, b) => a - b)
+
+    // Sort each column's turbines by y coordinate
     Object.values(turbinesByColumn).forEach((column) => {
       column.sort((a, b) => a.y - b.y)
 
-      // 繪製每一列中相鄰風機之間的連接線
+      // 找出這列的 x 坐標在排序後的位置，即為列索引
+      const columnIndex = sortedXValues.indexOf(column[0].x)
+      
+      // 檢查這一列是否是特殊處理的列（第0列和第3列）
+      const isSpecialColumn = columnIndex === 0 || columnIndex === 3;
+
+      // Draw connection lines between adjacent turbines in each column
       for (let i = 0; i < column.length - 1; i++) {
         const upperTurbine = column[i]
         const lowerTurbine = column[i + 1]
@@ -666,12 +689,20 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         ctx.lineTo(lowerTurbine.x, lowerTurbine.y - 35)
 
         const isCompleted = completedCablesTurbines.has(lowerTurbine.id) && completedCablesTurbines.has(upperTurbine.id)
-        if (isCompleted) {
+        
+        if (isSpecialColumn) {
+          // 特殊列使用原來的邏輯
+          if (isCompleted) {
+            ctx.strokeStyle = "#0066cc"
+            ctx.setLineDash([])
+          } else {
+            ctx.strokeStyle = "#cc0000"
+            ctx.setLineDash([5, 5])
+          }
+        } else {
+          // 其他列的連接線都改為深藍色實線
           ctx.strokeStyle = "#0066cc"
           ctx.setLineDash([])
-        } else {
-          ctx.strokeStyle = "#cc0000"
-          ctx.setLineDash([5, 5])
         }
 
         ctx.lineWidth = 1.5
@@ -681,7 +712,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     })
   }
 
-  // 繪製風機
+  // Draw turbine
   const drawTurbine = (
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -691,57 +722,57 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     taskCompletionByName: { [key: string]: boolean },
     taskNames: string[],
   ) => {
-    // 獲取原始代碼 - 從displayName中尋找對應的turbine以取得code
+    // Get original code - find corresponding turbine to get code from displayName
     const turbine = turbines.find(t => t.id === id)
     const code = turbine?.code || displayName
 
-    // 繪製風機圓形外框 - 增大風機圈圈尺寸
+    // Draw turbine circle outer frame - increase turbine circle size
     ctx.beginPath()
     ctx.arc(x, y, 35, 0, Math.PI * 2)
     ctx.strokeStyle = "#0066cc"
-    ctx.lineWidth = 3.0 // 加粗線條
+    ctx.lineWidth = 3.0 // Thicker line
     ctx.stroke()
 
-    // 獲取風機涉及的任務名稱
+    // Get turbines involved task names
     const turbineTaskNames = Object.keys(taskCompletionByName)
 
-    // 使用專案所有任務名稱進行分割，無論風機是否有關聯
+    // Use project all task names for splitting, regardless of whether turbine is associated
     let segments: { color: string; percentage: number }[] = []
     
     if (taskNames.length === 0) {
-      // 如果專案沒有任務，繪製空白圓圈
+      // If project has no tasks, draw blank circle
       ctx.beginPath()
       ctx.arc(x, y, 35, 0, Math.PI * 2)
       ctx.fillStyle = "#FFFFFF"
       ctx.fill()
     } else {
-      // 為所有專案任務創建分段，無論風機是否關聯
+      // Create segments for all project tasks, regardless of whether turbine is associated
       segments = taskNames.map((name) => {
-        // 判斷該任務是否關聯到此風機
+        // Check if task is associated with this turbine
         const isTaskRelated = turbineTaskNames.includes(name);
-        // 判斷該任務是否已完成（在所選時間範圍內）
+        // Check if task is completed (within selected time range)
         const isCompleted = isTaskRelated && taskCompletionByName[name];
         
         return {
-          // 如果任務已完成並且關聯到此風機，使用該任務對應的顏色；否則為白色
+          // If task is completed and associated with this turbine, use task's corresponding color; otherwise white
           color: isCompleted ? (taskColorMap[name] || "#006400") : "#FFFFFF",
           percentage: 100 / taskNames.length,
         }
       })
 
-      // 繪製風機狀態 - 根據專案的所有任務名稱平均分段
+      // Draw turbine status - average split based on project all task names
       drawPieChart(ctx, x, y, 35, segments)
     }
 
-    // 增加明顯的分段線 - 只要有任務就繪製分段線
+    // Add obvious segment lines - draw segment lines whenever there's a task
     if (segments.length > 0) {
-      let startAngle = -Math.PI / 2 // 從頂部開始
+      let startAngle = -Math.PI / 2 // Start from top
 
       segments.forEach((segment) => {
         const sliceAngle = (segment.percentage / 100) * (Math.PI * 2)
         const endAngle = startAngle + sliceAngle
 
-        // 繪製從圓心到圓周的分段線
+        // Draw segment line from center to circumference
         ctx.beginPath()
         ctx.moveTo(x, y)
         ctx.lineTo(x + Math.cos(startAngle) * 35, y + Math.sin(startAngle) * 35)
@@ -752,16 +783,16 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
         startAngle = endAngle
       })
 
-      // 最後一條線（回到起點）
+      // Last line (back to start)
       ctx.beginPath()
       ctx.moveTo(x, y)
-      ctx.lineTo(x, y - 35) // 回到頂部
+      ctx.lineTo(x, y - 35) // Back to top
       ctx.strokeStyle = "#333333"
       ctx.lineWidth = 1.5
       ctx.stroke()
     }
 
-    // 繪製內圓 - 增大內圓尺寸
+    // Draw inner circle - increase inner circle size
     ctx.beginPath()
     ctx.arc(x, y, 26, 0, Math.PI * 2)
     ctx.fillStyle = "white"
@@ -770,21 +801,21 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     ctx.lineWidth = 1
     ctx.stroke()
 
-    // 繪製風機代碼而非ID - 調整位置 (外圈顯示displayName)
+    // Draw turbine code rather than ID - adjust position (outer circle displays displayName)
     ctx.font = "12px Arial"
     ctx.fillStyle = "#000"
     ctx.textAlign = "center"
     ctx.fillText(displayName, x, y - 45)
 
-    // 將風機代碼分成兩行顯示在內圈 - 使用原始code而非displayName
+    // Split turbine code into two lines to display in inner circle - use original code rather than displayName
     const codeLines = code.split("-")
     ctx.font = "bold 11px Arial"
     ctx.fillStyle = "#0066cc"
-    ctx.fillText(codeLines[0], x, y - 6) // 第一行
-    ctx.fillText(codeLines[1] + (codeLines[2] ? "-" + codeLines[2] : ""), x, y + 10) // 第二行
+    ctx.fillText(codeLines[0], x, y - 6) // First line
+    ctx.fillText(codeLines[1] + (codeLines[2] ? "-" + codeLines[2] : ""), x, y + 10) // Second line
   }
 
-  // 繪製圓形分段圖表
+  // Draw pie chart
   const drawPieChart = (
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -792,7 +823,7 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     radius: number,
     segments: { color: string; percentage: number }[],
   ) => {
-    let startAngle = -Math.PI / 2 // 從頂部開始
+    let startAngle = -Math.PI / 2 // Start from top
 
     segments.forEach((segment) => {
       const sliceAngle = (segment.percentage / 100) * (Math.PI * 2)
@@ -809,29 +840,42 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
     })
   }
 
-  // 繪製圖例
+  // Draw legend
   const drawLegend = (ctx: CanvasRenderingContext2D, x: number, y: number, taskNames: string[]) => {
-    // 繪製圖例背景
+    // Draw legend background
     const legendWidth = 250;
-    const itemHeight = 40;  // 增加每項的高度，讓間距更大
-    const legendHeight = 50 + Math.ceil(taskNames.length / 2) * itemHeight;  // 根據任務名稱數量動態調整高度
+    const itemHeight = 34;  // Slightly smaller item height for compactness
+    const legendHeight = 35 + Math.ceil(taskNames.length / 2) * itemHeight;  // Dynamically adjust height based on task name count
     
-    // 繪製半透明背景
-    ctx.fillStyle = "rgba(255, 255, 255, 0.9)"
-    ctx.fillRect(x, y, legendWidth, legendHeight)
-    ctx.strokeStyle = "#cccccc"
+    // Draw semi-transparent background with rounded corners
+    const radius = 5;
+    ctx.fillStyle = "rgba(255, 255, 255, 0.95)"
+    ctx.beginPath();
+    // Draw rounded rectangle manually for browser compatibility
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + legendWidth - radius, y);
+    ctx.arcTo(x + legendWidth, y, x + legendWidth, y + radius, radius);
+    ctx.lineTo(x + legendWidth, y + legendHeight - radius);
+    ctx.arcTo(x + legendWidth, y + legendHeight, x + legendWidth - radius, y + legendHeight, radius);
+    ctx.lineTo(x + radius, y + legendHeight);
+    ctx.arcTo(x, y + legendHeight, x, y + legendHeight - radius, radius);
+    ctx.lineTo(x, y + radius);
+    ctx.arcTo(x, y, x + radius, y, radius);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#aaaaaa"
     ctx.lineWidth = 1
-    ctx.strokeRect(x, y, legendWidth, legendHeight)
+    ctx.stroke();
 
-    // 繪製標題
-    ctx.font = "bold 16px Arial"
+    // Draw title
+    ctx.font = "bold 15px Arial"
     ctx.fillStyle = "#000"
     ctx.textAlign = "left"
-    ctx.fillText("任務名稱圖例", x + 10, y + 30)
+    ctx.fillText("Task Name Legend", x + 10, y + 22)
 
-    // 繪製圖例項目
-    const boxSize = 18
-    const startY = y + 50  // 增加標題與項目間距
+    // Draw legend items
+    const boxSize = 16
+    const startY = y + 35  // Reduced space between title and items
     const itemsPerCol = Math.ceil(taskNames.length / 2)
 
     taskNames.forEach((name, index) => {
@@ -841,41 +885,43 @@ export function WindFarmVisualization({ projectName, turbines, tasks, currentDat
       const itemX = x + 10 + col * 120
       const itemY = startY + row * itemHeight
 
-      // 繪製顏色方塊，使用對應任務的顏色
+      // Draw color block, use corresponding task's color
       ctx.fillStyle = taskColorMap[name] || "#4CAF50"
       ctx.fillRect(itemX, itemY, boxSize, boxSize)
-      ctx.strokeStyle = "#000"
+      ctx.strokeStyle = "#555"
       ctx.lineWidth = 1
       ctx.strokeRect(itemX, itemY, boxSize, boxSize)
 
-      // 繪製任務名稱 - 使用短名稱避免太長
+      // Draw task name - use short name to avoid too long
       ctx.fillStyle = "#000"
-      ctx.font = "14px Arial"
+      ctx.font = "13px Arial"
       
-      // 如果名稱過長，截斷顯示
+      // If name is too long, truncate display
       const displayText = name.length > 15 ? name.substring(0, 12) + "..." : name
-      ctx.fillText(displayText, itemX + boxSize + 8, itemY + 15)
+      ctx.fillText(displayText, itemX + boxSize + 8, itemY + 12)
     })
   }
 
   return (
-    <div className="relative w-full overflow-auto bg-white">
-      <canvas 
-        ref={canvasRef} 
-        width="1600" 
-        height="900" 
-        className="mx-auto w-full" 
-        // 添加滑鼠離開畫布的處理
-        onMouseLeave={() => {
-          setHoveredTurbine(null);
-          setHoveredPosition(null);
-          setTurbineTasksInfo([]);
-        }}
-      />
-      {/* 可選: 顯示當前懸停的風機ID，用於調試 */}
-      {hoveredTurbine && (
-        <div className="hidden">{`當前懸停風機: ${hoveredTurbine}`}</div>
-      )}
+    <div className="relative w-full overflow-x-auto bg-white" style={{ minWidth: "100%", overflowX: "auto" }}>
+      <div className="min-w-max">
+        <canvas 
+          ref={canvasRef} 
+          width="1920" 
+          height="900" 
+          className="mx-0" 
+          // Add mouse leave processing
+          onMouseLeave={() => {
+            setHoveredTurbine(null);
+            setHoveredPosition(null);
+            setTurbineTasksInfo([]);
+          }}
+        />
+        {/* Optional: Display current hovered turbine ID, for debugging */}
+        {hoveredTurbine && (
+          <div className="hidden">{`Current hovered turbine: ${hoveredTurbine}`}</div>
+        )}
+      </div>
     </div>
   )
 }

@@ -35,8 +35,8 @@ export function WindFarmDashboard() {
       } catch (error) {
         console.error("Failed to load initial data:", error)
         toast({
-          title: "錯誤",
-          description: "無法載入專案資料，請稍後再試",
+          title: "Error",
+          description: "Unable to load project data, please try again later",
           variant: "destructive",
         })
         setIsLoading(false)
@@ -60,7 +60,7 @@ export function WindFarmDashboard() {
         setTurbines(turbinesData)
         setTasks(tasksData)
 
-        // 設置項目的開始和結束日期
+        // Set project start and end dates
         const currentProject = projects.find((p) => p.id === selectedProject)
         if (currentProject) {
           const newFrom = new Date(currentProject.startDate);
@@ -71,7 +71,7 @@ export function WindFarmDashboard() {
             to: newTo,
           });
           
-          // 初始化 selectedRange 為第一週
+          // Initialize selectedRange to the first week
           const oneWeekLater = new Date(newFrom);
           oneWeekLater.setDate(newFrom.getDate() + 7);
           setSelectedRange({
@@ -79,7 +79,7 @@ export function WindFarmDashboard() {
             end: oneWeekLater > newTo ? newTo : oneWeekLater
           });
           
-          // 只有當當前日期不在項目日期範圍內，才重設當前日期
+          // Only reset current date if it's not within the project date range
           const current = currentDate;
           if (current < newFrom || current > newTo) {
             setCurrentDate(newFrom);
@@ -90,8 +90,8 @@ export function WindFarmDashboard() {
       } catch (error) {
         console.error("Failed to load project data:", error)
         toast({
-          title: "錯誤",
-          description: "無法載入風機和任務資料，請稍後再試",
+          title: "Error",
+          description: "Unable to load turbine and task data, please try again later",
           variant: "destructive",
         })
         setIsLoading(false)
@@ -121,10 +121,10 @@ export function WindFarmDashboard() {
     setSelectedRange({ start, end });
   }
 
-  // 根據選擇的日期範圍篩選任務，而不僅是當前日期
+  // Filter tasks based on selected date range, not just current date
   const filteredTasks = tasks;
-  // 移除篩選，顯示所有任務，而不管起始時間
-  // 我們將在風機視覺化組件中控制哪些任務要塗色
+  // Remove filtering, show all tasks regardless of start time
+  // We'll control which tasks to color in the turbine visualization component
 
   const currentProject = projects.find((p) => p.id === selectedProject)
 
@@ -132,7 +132,7 @@ export function WindFarmDashboard() {
     <div className="w-full max-w-full mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div className="flex flex-col gap-2 w-full md:w-auto">
-          <h2 className="text-xl font-semibold">風場狀態概覽</h2>
+          <h2 className="text-xl font-semibold">Wind Farm Status Overview</h2>
           {currentProject && <p className="text-muted-foreground">{currentProject.name}</p>}
         </div>
         <ProjectSelector projects={projects} selectedProject={selectedProject} onProjectChange={handleProjectChange} />

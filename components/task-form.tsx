@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { CalendarIcon, Settings } from "lucide-react"
 import { format } from "date-fns"
-import { zhTW } from "date-fns/locale"
+import { enUS } from "date-fns/locale"
 import { useState, useEffect } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -18,19 +18,19 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import type { Task, Turbine, Project } from "@/lib/types"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { TaskTypeSettings, type TaskType } from "@/components/task-type-settings"
-import { fetchProject } from "@/lib/api"
+import { TaskTypeSettings, type TaskTypeWithColor } from "@/components/task-type-settings"
+import { fetchProject, createTask, updateTask, fetchTaskTypes } from "@/lib/api"
 
 const taskSchema = z.object({
-  name: z.string().min(1, { message: "任務名稱不能為空" }),
-  description: z.string().min(1, { message: "任務描述不能為空" }),
-  startDate: z.date({ required_error: "請選擇開始日期" }),
-  endDate: z.date({ required_error: "請選擇結束日期" }),
+  name: z.string().min(1, { message: "Task name cannot be empty" }),
+  description: z.string().min(1, { message: "Task description cannot be empty" }),
+  startDate: z.date({ required_error: "Please select a start date" }),
+  endDate: z.date({ required_error: "Please select an end date" }),
   status: z.enum(["pending", "in-progress", "completed"], {
-    required_error: "請選擇狀態",
+    required_error: "Please select a status",
   }),
-  type: z.string().min(1, { message: "請選擇類型" }),
-  turbineIds: z.array(z.string()).min(1, { message: "請至少選擇一個風機" }),
+  type: z.string().min(1, { message: "Please select a type" }),
+  turbineIds: z.array(z.string()).min(1, { message: "Please select at least one turbine" }),
 })
 
 interface TaskFormProps {
@@ -41,31 +41,13 @@ interface TaskFormProps {
   onCancel: () => void
 }
 
-// 預設任務類型
-const defaultTaskTypes = [
-  { value: "foundation", label: "海床整平", color: "red" },
-  { value: "piles", label: "樁基礎安裝", color: "yellow" },
-  { value: "jacket", label: "套管安裝", color: "blue" },
-  { value: "wtg", label: "風機安裝", color: "green" },
-  { value: "cables", label: "電纜鋪設", color: "purple" },
-  { value: "operation", label: "運營維護", color: "gray" },
-]
-
-// 從 localStorage 獲取自定義任務類型
-const getCustomTaskTypes = () => {
-  if (typeof window !== "undefined") {
-    const savedTypes = localStorage.getItem("customTaskTypes")
-    return savedTypes ? JSON.parse(savedTypes) : []
-  }
-  return []
-}
-
 export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: TaskFormProps) {
-  // 合併預設和自定義任務類型
-  const [taskTypes, setTaskTypes] = useState<TaskType[]>([...defaultTaskTypes])
+  // 使用TaskTypeWithColor類型
+  const [taskTypes, setTaskTypes] = useState<TaskTypeWithColor[]>([])
   const [showNewTaskForm, setShowNewTaskForm] = useState(false)
   const [showTaskTypeSettings, setShowTaskTypeSettings] = useState(false)
   const [projectStartDate, setProjectStartDate] = useState<Date | null>(null)
+  const [isLoadingTaskTypes, setIsLoadingTaskTypes] = useState(false)
 
   // 載入專案資訊以獲取開始日期
   useEffect(() => {
@@ -75,12 +57,12 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
         if (projectInfo && projectInfo.startDate) {
           setProjectStartDate(new Date(projectInfo.startDate))
         } else {
-          console.log("無法獲取專案開始日期，使用當前日期作為默認值")
+          console.log("Unable to get project start date, using current date as default")
           // 如果無法獲取專案開始日期，使用當前日期作為默認值
           setProjectStartDate(new Date())
         }
       } catch (error) {
-        console.error("無法載入專案資訊:", error)
+        console.error("Unable to load project information:", error)
         // 發生錯誤時也設置默認日期
         setProjectStartDate(new Date())
       }
@@ -89,18 +71,58 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
     loadProjectInfo()
   }, [projectId])
 
-  // 載入自定義任務類型
+  // 載入任務類型
   useEffect(() => {
-    const loadTaskTypes = () => {
-      const customTypes = getCustomTaskTypes()
-      setTaskTypes([...defaultTaskTypes, ...customTypes])
+    const loadTaskTypes = async () => {
+      try {
+        setIsLoadingTaskTypes(true)
+        // 從API獲取任務類型
+        const typesData = await fetchTaskTypes()
+        
+        // 處理任務類型數據，添加顏色屬性
+        const savedColors = localStorage.getItem("taskTypeColors")
+        const colorMap = savedColors ? JSON.parse(savedColors) : {}
+        
+        // 默認顏色映射
+        const defaultColors: {[key: string]: string} = {
+          "foundation": "red",
+          "piles": "yellow",
+          "jacket": "blue",
+          "wtg": "green",
+          "cables": "purple",
+          "operation": "gray"
+        }
+        
+        const processedTypes = typesData.map(type => ({
+          ...type,
+          color: colorMap[type.value] || defaultColors[type.value] || "gray",
+          isDefault: ["foundation", "piles", "jacket", "wtg", "cables", "operation"].includes(type.value)
+        })) as TaskTypeWithColor[]
+        
+        setTaskTypes(processedTypes)
+        setIsLoadingTaskTypes(false)
+      } catch (error) {
+        console.error("Failed to load task types:", error)
+        setIsLoadingTaskTypes(false)
+        
+        // 如果API調用失敗，使用默認類型
+        const defaultTaskTypes: TaskTypeWithColor[] = [
+          { value: "foundation", label: "Seabed Leveling", color: "red", isDefault: true },
+          { value: "piles", label: "Pile Foundation Installation", color: "yellow", isDefault: true },
+          { value: "jacket", label: "Jacket Installation", color: "blue", isDefault: true },
+          { value: "wtg", label: "Wind Turbine Installation", color: "green", isDefault: true },
+          { value: "cables", label: "Cable Laying", color: "purple", isDefault: true },
+          { value: "operation", label: "Operation & Maintenance", color: "gray", isDefault: true },
+        ]
+        setTaskTypes(defaultTaskTypes)
+      }
     }
 
     loadTaskTypes()
 
-    // 添加事件監聽器，當 localStorage 變更時重新載入
+    // 監聽色彩設置變更
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "customTaskTypes") {
+      if (e.key === "taskTypeColors") {
         loadTaskTypes()
       }
     }
@@ -130,7 +152,7 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
         },
   })
 
-  // 當專案開始日期載入後，如果是新任務則將開始日期更新為專案開始日期
+  // When project start date is loaded, update start date if it's a new task
   useEffect(() => {
     if (projectStartDate && !task) {
       form.setValue("startDate", projectStartDate)
@@ -138,11 +160,11 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
   }, [projectStartDate, form, task])
 
   const handleFormSubmit = (data: z.infer<typeof taskSchema>) => {
-    // 獲取結束日期
+    // Get end date
     const endDate = format(data.endDate, "yyyy-MM-dd");
     
-    // 如果有專案開始日期，使用專案開始日期作為任務開始日期
-    // 否則使用結束日期作為開始日期
+    // If there's a project start date, use it as the task start date
+    // Otherwise use the end date as the start date
     const startDate = projectStartDate 
       ? format(projectStartDate, "yyyy-MM-dd")
       : endDate;
@@ -156,7 +178,7 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
     })
   }
 
-  // 任務類型設定對話框關閉時重新載入任務類型
+  // Reload task types when task type settings dialog is closed
   const handleTaskTypeSettingsClose = () => {
     setShowTaskTypeSettings(false)
     const customTypes = getCustomTaskTypes()
@@ -171,9 +193,9 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>任務名稱</FormLabel>
+              <FormLabel>Task Name</FormLabel>
               <FormControl>
-                <Input placeholder="輸入任務名稱" {...field} />
+                <Input placeholder="Enter task name" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -185,9 +207,9 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>任務描述</FormLabel>
+              <FormLabel>Task Description</FormLabel>
               <FormControl>
-                <Textarea placeholder="輸入任務描述" className="resize-none" {...field} />
+                <Textarea placeholder="Enter task description" className="resize-none" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -200,13 +222,13 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
             name="type"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>任務類型</FormLabel>
+                <FormLabel>Task Type</FormLabel>
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="選擇任務類型" />
+                          <SelectValue placeholder="Select task type" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -224,7 +246,7 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
                             onClick={() => setShowTaskTypeSettings(true)}
                           >
                             <Settings className="mr-2 h-4 w-4" />
-                            管理任務類型
+                            Manage Task Types
                           </Button>
                         </div>
                       </SelectContent>
@@ -241,17 +263,17 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
             name="status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>任務狀態</FormLabel>
+                <FormLabel>Task Status</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="選擇任務狀態" />
+                      <SelectValue placeholder="Select task status" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="pending">待處理</SelectItem>
-                    <SelectItem value="in-progress">進行中</SelectItem>
-                    <SelectItem value="completed">已完成</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -261,14 +283,14 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
         </div>
 
         <div className="grid grid-cols-1 gap-4">
-          {/* 開始日期欄位隱藏，但保留其功能性 */}
+          {/* Start date field is hidden but keeps its functionality */}
           <FormField
             control={form.control}
             name="startDate"
             render={({ field }) => (
               <div className="hidden">
                 <FormItem className="flex flex-col">
-                  <FormLabel>開始日期</FormLabel>
+                  <FormLabel>Start Date</FormLabel>
                   <FormControl>
                     <input
                       type="hidden"
@@ -286,7 +308,7 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
             name="endDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel className="font-bold">完工日期</FormLabel>
+                <FormLabel className="font-bold">Completion Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -294,7 +316,7 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
                         variant={"outline"}
                         className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                       >
-                        {field.value ? format(field.value, "yyyy-MM-dd", { locale: zhTW }) : <span>選擇日期</span>}
+                        {field.value ? format(field.value, "yyyy-MM-dd", { locale: enUS }) : <span>Select date</span>}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </FormControl>
@@ -306,15 +328,15 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
                       onSelect={(date) => {
                         if (date) {
                           field.onChange(date)
-                          // 自動設置開始日期與結束日期相同
+                          // Automatically set start date to the same as end date
                           form.setValue("startDate", date)
-                          // 自動關閉日期選擇器
+                          // Automatically close date picker
                           document.body.click()
                         }
                       }}
                       disabled={(date) => date < new Date("2000-01-01")}
                       initialFocus
-                      locale={zhTW}
+                      locale={enUS}
                     />
                   </PopoverContent>
                 </Popover>
@@ -330,8 +352,8 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
           render={() => (
             <FormItem>
               <div className="mb-4">
-                <FormLabel className="text-base">選擇風機</FormLabel>
-                <div className="text-sm text-muted-foreground mb-4">選擇此任務涉及的風機</div>
+                <FormLabel className="text-base">Select Turbines</FormLabel>
+                <div className="text-sm text-muted-foreground mb-4">Select turbines involved in this task</div>
               </div>
               <div className="flex justify-between items-center mb-2">
                 <Button
@@ -343,10 +365,10 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
                     form.setValue("turbineIds", allTurbineIds)
                   }}
                 >
-                  全選
+                  Select All
                 </Button>
                 <Button type="button" variant="outline" size="sm" onClick={() => form.setValue("turbineIds", [])}>
-                  清除
+                  Clear
                 </Button>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-60 overflow-y-auto p-2 border rounded-md">
@@ -384,17 +406,17 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
 
         <div className="flex justify-end space-x-2">
           <Button variant="outline" onClick={onCancel}>
-            取消
+            Cancel
           </Button>
-          <Button type="submit">{task ? "更新任務" : "建立任務"}</Button>
+          <Button type="submit">{task ? "Update Task" : "Create Task"}</Button>
         </div>
       </form>
 
-      {/* 任務類型設定對話框 */}
+      {/* Task type settings dialog */}
       <Dialog open={showTaskTypeSettings} onOpenChange={setShowTaskTypeSettings}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>任務類型設定</DialogTitle>
+            <DialogTitle>Task Type Settings</DialogTitle>
           </DialogHeader>
           <TaskTypeSettings onClose={handleTaskTypeSettingsClose} />
         </DialogContent>

@@ -16,7 +16,7 @@ export function calculateTaskCompletionRate(tasks: Task[]) {
     operation: 0,
   }
 
-  // 按類型分組任務
+  // Group tasks by type
   const tasksByType: { [key: string]: Task[] } = {}
 
   tasks.forEach((task) => {
@@ -26,7 +26,7 @@ export function calculateTaskCompletionRate(tasks: Task[]) {
     tasksByType[task.type].push(task)
   })
 
-  // 計算每種類型的完成率
+  // Calculate completion rate for each type
   Object.keys(tasksByType).forEach((type) => {
     const typeTasks = tasksByType[type]
     const completedTasks = typeTasks.filter((task) => task.status === "completed")

@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input"
 import type { Turbine } from "@/lib/types"
 
 const turbineSchema = z.object({
-  code: z.string().min(1, { message: "風機代碼不能為空" }),
-  name: z.string().min(1, { message: "風機名稱不能為空" }),
+  code: z.string().min(1, { message: "Turbine code cannot be empty" }),
+  name: z.string().min(1, { message: "Turbine name cannot be empty" }),
   location: z.object({
     x: z.coerce.number(),
     y: z.coerce.number(),
@@ -52,9 +52,9 @@ export function TurbineForm({ projectId, turbine, onSubmit, onCancel }: TurbineF
           name="code"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>風機代碼</FormLabel>
+              <FormLabel>Turbine Code</FormLabel>
               <FormControl>
-                <Input placeholder="例如: HL21-A01-A" {...field} />
+                <Input placeholder="Example: HL21-A01-A" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -66,9 +66,9 @@ export function TurbineForm({ projectId, turbine, onSubmit, onCancel }: TurbineF
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>風機名稱</FormLabel>
+              <FormLabel>Turbine Name</FormLabel>
               <FormControl>
-                <Input placeholder="例如: 風機 1" {...field} />
+                <Input placeholder="Example: Turbine 1" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -81,11 +81,11 @@ export function TurbineForm({ projectId, turbine, onSubmit, onCancel }: TurbineF
             name="location.x"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>X 座標</FormLabel>
+                <FormLabel>X Coordinate</FormLabel>
                 <FormControl>
                   <Input type="number" {...field} />
                 </FormControl>
-                <FormDescription>X座標代表風機在視覺化圖上的水平位置（從左到右）</FormDescription>
+                <FormDescription>X coordinate represents the horizontal position of the turbine on the visualization map (from left to right)</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -96,11 +96,11 @@ export function TurbineForm({ projectId, turbine, onSubmit, onCancel }: TurbineF
             name="location.y"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Y 座標</FormLabel>
+                <FormLabel>Y Coordinate</FormLabel>
                 <FormControl>
                   <Input type="number" {...field} />
                 </FormControl>
-                <FormDescription>Y座標代表風機在視覺化圖上的垂直位置（從上到下）</FormDescription>
+                <FormDescription>Y coordinate represents the vertical position of the turbine on the visualization map (from top to bottom)</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -109,9 +109,9 @@ export function TurbineForm({ projectId, turbine, onSubmit, onCancel }: TurbineF
 
         <div className="flex justify-end space-x-2">
           <Button variant="outline" onClick={onCancel}>
-            取消
+            Cancel
           </Button>
-          <Button type="submit">{turbine ? "更新風機" : "建立風機"}</Button>
+          <Button type="submit">{turbine ? "Update Turbine" : "Create Turbine"}</Button>
         </div>
       </form>
     </Form>

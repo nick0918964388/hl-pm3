@@ -20,11 +20,47 @@ export interface Task {
 
 export interface Turbine {
   id: string
-  code: string // 例如 HL21-A01-A
+  code: string // For example HL21-A01-A
   name: string
-  displayName: string // 用於在儀表板上顯示的名稱
+  displayName?: string
   location: {
     x: number
     y: number
   }
+  coordinates?: {
+    lat: number
+    lng: number
+  }
+  status: 'normal' | 'warning' | 'error' | 'maintenance'
+  rpm?: number
+  power?: number
+  maintenanceTickets?: number
+}
+
+export interface TaskType {
+  value: string
+  label: string
+  description?: string
+}
+
+export interface Cable {
+  id: string
+  sourceId: string  // 起點ID (風機或變電站)
+  targetId: string  // 終點ID (風機或變電站)
+  sourceType: 'turbine' | 'substation'  // 起點類型
+  targetType: 'turbine' | 'substation'  // 終點類型
+  status: 'normal' | 'warning' | 'error'  // 電纜狀態
+  powerFlow: number  // 電力流量 (MW)
+}
+
+export interface Substation {
+  id: string
+  name: string
+  coordinates: {
+    lat: number
+    lng: number
+  }
+  capacity: number  // 變電站容量 (MW)
+  currentLoad: number  // 當前負載 (MW)
+  status: 'normal' | 'warning' | 'error' | 'maintenance'  // 變電站狀態
 }

@@ -53,8 +53,8 @@ export function TurbineManagement({ project }: TurbineManagementProps) {
       } catch (error) {
         console.error("Failed to load turbines:", error)
         toast({
-          title: "錯誤",
-          description: "無法載入風機資料，請稍後再試",
+          title: "Error",
+          description: "Unable to load turbine data, please try again later",
           variant: "destructive",
         })
         setIsLoading(false)
@@ -70,14 +70,14 @@ export function TurbineManagement({ project }: TurbineManagementProps) {
       setTurbines([...turbines, newTurbine])
       setIsAddDialogOpen(false)
       toast({
-        title: "成功",
-        description: "風機已成功建立",
+        title: "Success",
+        description: "Turbine created successfully",
       })
     } catch (error) {
       console.error("Failed to create turbine:", error)
       toast({
-        title: "錯誤",
-        description: "無法建立風機，請稍後再試",
+        title: "Error",
+        description: "Unable to create turbine, please try again later",
         variant: "destructive",
       })
     }
@@ -92,14 +92,14 @@ export function TurbineManagement({ project }: TurbineManagementProps) {
       setIsEditDialogOpen(false)
       setSelectedTurbine(null)
       toast({
-        title: "成功",
-        description: "風機已成功更新",
+        title: "Success",
+        description: "Turbine updated successfully",
       })
     } catch (error) {
       console.error("Failed to update turbine:", error)
       toast({
-        title: "錯誤",
-        description: "無法更新風機，請稍後再試",
+        title: "Error",
+        description: "Unable to update turbine, please try again later",
         variant: "destructive",
       })
     }
@@ -110,14 +110,14 @@ export function TurbineManagement({ project }: TurbineManagementProps) {
       await deleteTurbine(project.id, turbineId)
       setTurbines(turbines.filter((turbine) => turbine.id !== turbineId))
       toast({
-        title: "成功",
-        description: "風機已成功刪除",
+        title: "Success",
+        description: "Turbine deleted successfully",
       })
     } catch (error) {
       console.error("Failed to delete turbine:", error)
       toast({
-        title: "錯誤",
-        description: "無法刪除風機，請稍後再試",
+        title: "Error",
+        description: "Unable to delete turbine, please try again later",
         variant: "destructive",
       })
     }
@@ -135,18 +135,18 @@ export function TurbineManagement({ project }: TurbineManagementProps) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold">風機管理 - {project.name}</h2>
+        <h2 className="text-2xl font-bold">Turbine Management - {project.name}</h2>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              新增風機
+              Add Turbine
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>新增風機</DialogTitle>
-              <DialogDescription>填寫以下表單來建立新的風機</DialogDescription>
+              <DialogTitle>Add Turbine</DialogTitle>
+              <DialogDescription>Fill out the form below to create a new turbine</DialogDescription>
             </DialogHeader>
             <TurbineForm
               projectId={project.id}
@@ -159,7 +159,7 @@ export function TurbineManagement({ project }: TurbineManagementProps) {
 
       <div className="flex items-center gap-2 max-w-sm">
         <Search className="h-4 w-4 text-muted-foreground" />
-        <Input placeholder="搜尋風機..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+        <Input placeholder="Search turbines..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
       </div>
 
       {isLoading ? (
@@ -169,8 +169,8 @@ export function TurbineManagement({ project }: TurbineManagementProps) {
       ) : filteredTurbines.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 bg-muted/30 rounded-lg">
           <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-medium text-muted-foreground">尚無風機</h3>
-          <p className="text-muted-foreground mt-2">點擊「新增風機」按鈕來建立風機</p>
+          <h3 className="text-xl font-medium text-muted-foreground">No Turbines</h3>
+          <p className="text-muted-foreground mt-2">Click the "Add Turbine" button to create a turbine</p>
         </div>
       ) : (
         <div className="border rounded-md">
@@ -178,10 +178,10 @@ export function TurbineManagement({ project }: TurbineManagementProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
-                <TableHead>代碼</TableHead>
-                <TableHead>名稱</TableHead>
-                <TableHead>位置 (X, Y)</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Location (X, Y)</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -205,24 +205,22 @@ export function TurbineManagement({ project }: TurbineManagementProps) {
                         <DialogTrigger asChild>
                           <Button
                             variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedTurbine(turbine)
-                              setIsEditDialogOpen(true)
-                            }}
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setSelectedTurbine(turbine)}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[600px]">
                           <DialogHeader>
-                            <DialogTitle>編輯風機</DialogTitle>
-                            <DialogDescription>修改風機資訊</DialogDescription>
+                            <DialogTitle>Edit Turbine</DialogTitle>
+                            <DialogDescription>Update turbine details</DialogDescription>
                           </DialogHeader>
                           {selectedTurbine && (
                             <TurbineForm
-                              projectId={project.id}
                               turbine={selectedTurbine}
+                              projectId={project.id}
                               onSubmit={handleEditTurbine}
                               onCancel={() => {
                                 setIsEditDialogOpen(false)
@@ -235,21 +233,21 @@ export function TurbineManagement({ project }: TurbineManagementProps) {
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm">
+                          <Button variant="outline" size="icon" className="h-8 w-8">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>確認刪除</AlertDialogTitle>
+                            <AlertDialogTitle>Delete Turbine</AlertDialogTitle>
                             <AlertDialogDescription>
-                              您確定要刪除此風機嗎？此操作無法撤銷，相關的任務關聯也將被移除。
+                              Are you sure you want to delete this turbine? This action cannot be undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={() => handleDeleteTurbine(turbine.id)}>
-                              確認刪除
+                              Delete
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

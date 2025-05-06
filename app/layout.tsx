@@ -8,8 +8,8 @@ import { Navbar } from "@/components/navbar"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "風場專案管理系統",
-  description: "風場設備安裝和維護進度追蹤系統",
+  title: "Wind Farm Project Management System",
+  description: "Wind Farm Equipment Installation and Maintenance Progress Tracking System",
 }
 
 export default function RootLayout({
@@ -18,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="zh-TW">
+    <html lang="en">
       <body className={inter.className}>
         <div className="relative min-h-screen flex flex-col">
           <Navbar />

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
-import { zhTW } from "date-fns/locale"
+import { enUS } from "date-fns/locale"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -17,10 +17,10 @@ import { cn } from "@/lib/utils"
 import type { Project } from "@/lib/types"
 
 const projectSchema = z.object({
-  name: z.string().min(1, { message: "專案名稱不能為空" }),
-  description: z.string().min(1, { message: "專案描述不能為空" }),
-  startDate: z.date({ required_error: "請選擇開始日期" }),
-  endDate: z.date({ required_error: "請選擇結束日期" }),
+  name: z.string().min(1, { message: "Project name cannot be empty" }),
+  description: z.string().min(1, { message: "Project description cannot be empty" }),
+  startDate: z.date({ required_error: "Please select a start date" }),
+  endDate: z.date({ required_error: "Please select an end date" }),
 })
 
 interface ProjectFormProps {
@@ -29,7 +29,7 @@ interface ProjectFormProps {
   onCancel: () => void
 }
 
-// 修改 onSubmit 處理函數，防止表單重複提交
+// Modify onSubmit handler to prevent form resubmission
 export function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const form = useForm<z.infer<typeof projectSchema>>({
@@ -63,9 +63,9 @@ export function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>專案名稱</FormLabel>
+              <FormLabel>Project Name</FormLabel>
               <FormControl>
-                <Input placeholder="輸入專案名稱" {...field} />
+                <Input placeholder="Enter project name" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -77,9 +77,9 @@ export function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>專案描述</FormLabel>
+              <FormLabel>Project Description</FormLabel>
               <FormControl>
-                <Textarea placeholder="輸入專案描述" className="resize-none" {...field} />
+                <Textarea placeholder="Enter project description" className="resize-none" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -92,7 +92,7 @@ export function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
             name="startDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>開始日期</FormLabel>
+                <FormLabel>Start Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -100,7 +100,7 @@ export function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
                         variant={"outline"}
                         className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                       >
-                        {field.value ? format(field.value, "yyyy-MM-dd", { locale: zhTW }) : <span>選擇日期</span>}
+                        {field.value ? format(field.value, "yyyy-MM-dd", { locale: enUS }) : <span>Select date</span>}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </FormControl>
@@ -111,18 +111,18 @@ export function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
                       selected={field.value}
                       onSelect={(date) => {
                         field.onChange(date)
-                        // 將結束日期自動設為選擇的開始日期
+                        // Automatically set end date to the selected start date
                         if (date) {
                           form.setValue("endDate", date)
                         }
-                        // 自動關閉日期選擇器
+                        // Automatically close date picker
                         document.body.click()
                       }}
                       disabled={(date) =>
                         date < new Date("2000-01-01")
                       }
                       initialFocus
-                      locale={zhTW}
+                      locale={enUS}
                     />
                   </PopoverContent>
                 </Popover>
@@ -136,7 +136,7 @@ export function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
             name="endDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>結束日期</FormLabel>
+                <FormLabel>End Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -144,7 +144,7 @@ export function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
                         variant={"outline"}
                         className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                       >
-                        {field.value ? format(field.value, "yyyy-MM-dd", { locale: zhTW }) : <span>選擇日期</span>}
+                        {field.value ? format(field.value, "yyyy-MM-dd", { locale: enUS }) : <span>Select date</span>}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </FormControl>
@@ -156,7 +156,7 @@ export function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
                       defaultMonth={form.getValues("startDate")}
                       onSelect={(date) => {
                         field.onChange(date)
-                        // 自動關閉日期選擇器
+                        // Automatically close date picker
                         document.body.click()
                       }}
                       disabled={(date) =>
@@ -164,7 +164,7 @@ export function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
                         (form.getValues("startDate") && date < form.getValues("startDate"))
                       }
                       initialFocus
-                      locale={zhTW}
+                      locale={enUS}
                     />
                   </PopoverContent>
                 </Popover>
@@ -176,10 +176,10 @@ export function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
 
         <div className="flex justify-end space-x-2">
           <Button variant="outline" onClick={onCancel} type="button">
-            取消
+            Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "處理中..." : project ? "更新專案" : "建立專案"}
+            {isSubmitting ? "Processing..." : project ? "Update Project" : "Create Project"}
           </Button>
         </div>
       </form>

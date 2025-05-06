@@ -8,6 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ChevronDown, ChevronUp, AlertTriangle, BarChart3, ArrowUpDown, Wrench, Cable } from 'lucide-react';
 import { fetchTurbines, fetchCables, fetchSubstations } from '@/lib/api';
 import type { Turbine, Cable as CableType, Substation } from '@/lib/types';
+import { TurbinePowerHistory } from '@/components/turbine-power-history';
+import { TurbineAlertsTable } from '@/components/turbine-alerts-table';
+import { TurbineMaintenanceTable } from '@/components/turbine-maintenance-table';
 
 // 動態引入地圖組件以避免服務端渲染問題
 const WindFarmMap = dynamic(() => import('@/components/wind-farm-map'), {
@@ -33,7 +36,7 @@ export function WindFarmMonitoring() {
   const [loading, setLoading] = useState<boolean>(true);
   const [expandedTurbine, setExpandedTurbine] = useState<string | null>(null);
   const [selectedTurbine, setSelectedTurbine] = useState<string | null>(null);
-  const [showCables, setShowCables] = useState<boolean>(true);
+  const [expandedSection, setExpandedSection] = useState<'power' | 'alerts' | 'maintenance'>('power');
   
   // 參考列表容器元素，用於滾動
   const listContainerRef = useRef<HTMLDivElement>(null);
@@ -55,6 +58,11 @@ export function WindFarmMonitoring() {
         setTurbines(turbineData);
         setCables(cableData);
         setSubstations(substationData);
+        
+        // 添加調試輸出
+        console.log('風機數據:', turbineData);
+        console.log('電纜數據:', cableData);
+        console.log('變電站數據:', substationData);
       } catch (error) {
         console.error('Failed to fetch data:', error);
       } finally {
@@ -109,11 +117,6 @@ export function WindFarmMonitoring() {
     }, 100);
   };
 
-  // 切換電纜顯示狀態
-  const toggleCables = () => {
-    setShowCables(!showCables);
-  };
-
   // 將API返回的風機數據轉換為地圖所需格式
   const processedTurbines = turbines.map(turbine => {
     // 如果API返回的風機數據沒有狀態或座標信息，則使用默認值
@@ -147,15 +150,6 @@ export function WindFarmMonitoring() {
                 </div>
               ))}
             </div>
-            <Button 
-              size="sm" 
-              variant={showCables ? "default" : "outline"} 
-              className="flex items-center gap-1"
-              onClick={toggleCables}
-            >
-              <Cable size={14} />
-              <span className="text-xs">電纜連接</span>
-            </Button>
           </div>
           <CardContent className="p-0 overflow-auto flex-grow" ref={listContainerRef}>
             {loading ? (
@@ -210,42 +204,74 @@ export function WindFarmMonitoring() {
                             <TableCell colSpan={6} className="bg-slate-50 p-3">
                               <div className="space-y-3">
                                 <div className="flex flex-wrap gap-2">
-                                  <Button size="sm" variant="outline" className="flex items-center gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant={expandedSection === 'power' ? 'default' : 'outline'} 
+                                    className="flex items-center gap-2"
+                                    onClick={() => setExpandedSection('power')}
+                                  >
                                     <BarChart3 size={14} />
                                     歷史發電量
                                   </Button>
-                                  <Button size="sm" variant="outline" className="flex items-center gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant={expandedSection === 'alerts' ? 'default' : 'outline'} 
+                                    className="flex items-center gap-2"
+                                    onClick={() => setExpandedSection('alerts')}
+                                  >
                                     <AlertTriangle size={14} />
                                     異常事件
                                   </Button>
-                                  <Button size="sm" variant="outline" className="flex items-center gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant={expandedSection === 'maintenance' ? 'default' : 'outline'} 
+                                    className="flex items-center gap-2"
+                                    onClick={() => setExpandedSection('maintenance')}
+                                  >
                                     <Wrench size={14} />
                                     維護工單
                                   </Button>
                                 </div>
                                 
-                                <div className="grid grid-cols-2 gap-2">
-                                  <Card>
-                                    <CardHeader className="py-1">
-                                      <CardTitle className="text-sm">今日發電量</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <p className="text-lg font-bold">{(turbine.power * 24).toFixed(1)} MWh</p>
-                                    </CardContent>
-                                  </Card>
-                                  
-                                  <Card>
-                                    <CardHeader className="py-1">
-                                      <CardTitle className="text-sm">運行效率</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <p className="text-lg font-bold">
-                                        {turbine.status === 'normal' ? '92%' : 
-                                         turbine.status === 'warning' ? '78%' : '0%'}
-                                      </p>
-                                    </CardContent>
-                                  </Card>
-                                </div>
+                                {expandedSection === 'power' ? (
+                                  <TurbinePowerHistory 
+                                    turbineId={turbine.id} 
+                                    turbineCode={turbine.code} 
+                                  />
+                                ) : expandedSection === 'alerts' ? (
+                                  <TurbineAlertsTable
+                                    turbineId={turbine.id}
+                                    turbineCode={turbine.code}
+                                  />
+                                ) : expandedSection === 'maintenance' ? (
+                                  <TurbineMaintenanceTable
+                                    turbineId={turbine.id}
+                                    turbineCode={turbine.code}
+                                  />
+                                ) : (
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <Card>
+                                      <CardHeader className="py-1">
+                                        <CardTitle className="text-sm">今日發電量</CardTitle>
+                                      </CardHeader>
+                                      <CardContent>
+                                        <p className="text-lg font-bold">{(turbine.power * 24).toFixed(1)} MWh</p>
+                                      </CardContent>
+                                    </Card>
+                                    
+                                    <Card>
+                                      <CardHeader className="py-1">
+                                        <CardTitle className="text-sm">運行效率</CardTitle>
+                                      </CardHeader>
+                                      <CardContent>
+                                        <p className="text-lg font-bold">
+                                          {turbine.status === 'normal' ? '92%' : 
+                                           turbine.status === 'warning' ? '78%' : '0%'}
+                                        </p>
+                                      </CardContent>
+                                    </Card>
+                                  </div>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -277,7 +303,7 @@ export function WindFarmMonitoring() {
                   turbines={processedTurbines} 
                   selectedTurbineId={selectedTurbine}
                   onTurbineClick={handleMapTurbineClick}
-                  cables={showCables ? cables : []} 
+                  cables={cables} 
                   substations={substations}
                 />
               )}

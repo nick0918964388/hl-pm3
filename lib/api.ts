@@ -1,4 +1,4 @@
-import type { Project, Task, Turbine, TaskType, Cable, Substation } from "./types"
+import type { Project, Task, Turbine, TaskType, Cable, Substation, TurbineAlert, MaintenanceTicket } from "./types"
 import { addDays, addWeeks } from "date-fns"
 
 // 預設任務類型
@@ -45,7 +45,10 @@ const API_ENDPOINTS = {
   // Task type related endpoints
   getTaskTypes: "GET_TASK_TYPES",
   newTaskType: "NEW_TASK_TYPE",
-  deleteTaskType: "DELETE_TASK_TYPE"
+  deleteTaskType: "DELETE_TASK_TYPE",
+  
+  // New endpoint for fetching turbine historical power
+  getTurbineHistoricalPower: "GET_TURBINE_HISTORICAL_POWER"
 }
 
 // Maximo API Call Function
@@ -802,12 +805,12 @@ function getSimulatedCables(projectId: string): Promise<Cable[]> {
   // Simulate API delay
   return new Promise((resolve) => {
     setTimeout(() => {
-      // 返回模擬數據
+      // 返回模擬數據，修改ID以更好匹配項目中的風機ID格式
       resolve([
         {
           id: 'cable-1',
-          sourceId: '1',
-          targetId: '2',
+          sourceId: 'HL21-A01-A',  // 修改為實際風機ID格式
+          targetId: 'HL21-A02-A',  // 修改為實際風機ID格式
           sourceType: 'turbine',
           targetType: 'turbine',
           status: 'normal',
@@ -815,8 +818,8 @@ function getSimulatedCables(projectId: string): Promise<Cable[]> {
         },
         {
           id: 'cable-2',
-          sourceId: '2',
-          targetId: '3',
+          sourceId: 'HL21-A02-A',
+          targetId: 'HL21-A03-A',
           sourceType: 'turbine',
           targetType: 'turbine',
           status: 'normal',
@@ -824,17 +827,17 @@ function getSimulatedCables(projectId: string): Promise<Cable[]> {
         },
         {
           id: 'cable-3',
-          sourceId: '3',
-          targetId: 'sub-1',
+          sourceId: 'HL21-A03-A',
+          targetId: 'HL21-A04-A',
           sourceType: 'turbine',
-          targetType: 'substation',
+          targetType: 'turbine',
           status: 'normal',
           powerFlow: 4.2,
         },
         {
           id: 'cable-4',
-          sourceId: '4',
-          targetId: '5',
+          sourceId: 'HL21-A04-A',
+          targetId: 'HL21-A05-A',
           sourceType: 'turbine',
           targetType: 'turbine',
           status: 'warning',
@@ -842,13 +845,86 @@ function getSimulatedCables(projectId: string): Promise<Cable[]> {
         },
         {
           id: 'cable-5',
-          sourceId: '5',
+          sourceId: 'HL21-B01-A',
+          targetId: 'HL21-B02-A',
+          sourceType: 'turbine',
+          targetType: 'turbine',
+          status: 'normal',
+          powerFlow: 3.7,
+        },
+        {
+          id: 'cable-6',
+          sourceId: 'HL21-B02-A',
+          targetId: 'HL21-B03-A',
+          sourceType: 'turbine',
+          targetType: 'turbine',
+          status: 'normal',
+          powerFlow: 2.5,
+        },
+        {
+          id: 'cable-7',
+          sourceId: 'HL21-D01-A',
+          targetId: 'HL21-D02-A',
+          sourceType: 'turbine',
+          targetType: 'turbine',
+          status: 'normal',
+          powerFlow: 1.8,
+        },
+        {
+          id: 'cable-8',
+          sourceId: 'HL21-D02-A',
+          targetId: 'HL21-D03-A',
+          sourceType: 'turbine',
+          targetType: 'turbine',
+          status: 'warning',
+          powerFlow: 0.9,
+        },
+        {
+          id: 'cable-9',
+          sourceId: 'HL21-D03-A',
+          targetId: 'HL21-D04-A',
+          sourceType: 'turbine',
+          targetType: 'turbine',
+          status: 'normal',
+          powerFlow: 2.1,
+        },
+        {
+          id: 'cable-10',
+          sourceId: 'HL21-D04-A',
+          targetId: 'HL21-D05-A',
+          sourceType: 'turbine',
+          targetType: 'turbine',
+          status: 'normal',
+          powerFlow: 2.6,
+        },
+        // 添加子站連接
+        {
+          id: 'cable-sub-1',
+          sourceId: 'HL21-A05-A',
           targetId: 'sub-1',
           sourceType: 'turbine',
           targetType: 'substation',
           status: 'normal',
-          powerFlow: 3.7,
+          powerFlow: 6.5,
         },
+        {
+          id: 'cable-sub-2',
+          sourceId: 'HL21-B03-A',
+          targetId: 'sub-1',
+          sourceType: 'turbine',
+          targetType: 'substation',
+          status: 'normal',
+          powerFlow: 5.2,
+        },
+        {
+          id: 'cable-sub-3',
+          sourceId: 'HL21-D05-A',
+          targetId: 'sub-1',
+          sourceType: 'turbine',
+          targetType: 'substation',
+          status: 'normal',
+          powerFlow: 7.8,
+        }
       ]);
     }, 500); // 模擬網絡延遲
   });
@@ -874,5 +950,235 @@ function getSimulatedSubstations(projectId: string): Promise<Substation[]> {
         },
       ]);
     }, 500); // 模擬網絡延遲
+  });
+}
+
+// 獲取風機歷史發電量數據
+export async function fetchTurbineHistoricalPower(turbineId: string, period: string = '7d'): Promise<{date: string, power: number}[]> {
+  if (API_CONFIG.useMaximoAPI) {
+    try {
+      return await callMaximoAPI<{date: string, power: number}[]>(
+        API_ENDPOINTS.getTurbineHistoricalPower, 
+        { turbineId, period }
+      )
+    } catch (error) {
+      console.warn("Failed to fetch turbine historical power using Maximo API, falling back to mock data", error)
+      // 使用模擬數據作為備用選項
+      return getSimulatedTurbineHistoricalPower(turbineId, period);
+    }
+  }
+  
+  // 不使用API時，返回模擬數據
+  return getSimulatedTurbineHistoricalPower(turbineId, period);
+}
+
+// 模擬風機歷史發電量數據
+function getSimulatedTurbineHistoricalPower(turbineId: string, period: string): Promise<{date: string, power: number}[]> {
+  // 根據不同時間周期生成不同的數據點數量
+  let days = 7;
+  let intervalHours = 24;
+  
+  if (period === '30d') {
+    days = 30;
+    intervalHours = 24;
+  } else if (period === '90d') {
+    days = 90;
+    intervalHours = 24;
+  } else if (period === '24h') {
+    days = 1;
+    intervalHours = 1;
+  }
+  
+  // 生成模擬數據
+  const data: {date: string, power: number}[] = [];
+  const endDate = new Date();
+  const seedValue = turbineId.charCodeAt(turbineId.length - 1); // 根據風機ID生成不同的隨機種子
+  
+  for (let i = 0; i < days * (24 / intervalHours); i++) {
+    // 計算日期，從當前時間向前推算
+    const date = new Date(endDate);
+    date.setHours(date.getHours() - i * intervalHours);
+    
+    // 根據風機ID和日期生成一些隨機但有規律的數據
+    // 使用正弦波以產生更自然的波動效果
+    const hourOfDay = date.getHours();
+    const dayFactor = Math.sin((hourOfDay - 12) * Math.PI / 12); // 日內波動
+    const randomFactor = Math.random() * 0.3 + 0.85; // 隨機因子，使數據更自然
+    
+    // 基本發電量（白天發電量高，夜間低）
+    let basePower = 3.5 + (seedValue % 5) * 0.5; // 不同風機有不同的基礎發電能力
+    // 白天產能高，夜間低
+    basePower = basePower * (dayFactor > 0 ? (1 + dayFactor * 0.6) : (0.4 + (1 + dayFactor) * 0.3));
+    
+    // 最終發電量數值
+    const power = Math.max(0, basePower * randomFactor);
+    
+    data.push({
+      date: date.toISOString(),
+      power: parseFloat(power.toFixed(2))
+    });
+  }
+  
+  // 將數據按時間順序排序（從早到晚）
+  data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(data), 500); // 模擬API延遲
+  });
+}
+
+// 獲取風機異常事件
+export async function fetchTurbineAlerts(turbineId: string): Promise<TurbineAlert[]> {
+  if (API_CONFIG.useMaximoAPI) {
+    try {
+      return await callMaximoAPI<TurbineAlert[]>(
+        'GET_TURBINE_ALERTS', 
+        { turbineId }
+      )
+    } catch (error) {
+      console.warn("Failed to fetch turbine alerts using Maximo API, falling back to mock data", error)
+      // 使用模擬數據作為備用選項
+      return getSimulatedTurbineAlerts(turbineId);
+    }
+  }
+  
+  // 不使用API時，返回模擬數據
+  return getSimulatedTurbineAlerts(turbineId);
+}
+
+// 獲取風機維修工單
+export async function fetchTurbineMaintenanceTickets(turbineId: string): Promise<MaintenanceTicket[]> {
+  if (API_CONFIG.useMaximoAPI) {
+    try {
+      return await callMaximoAPI<MaintenanceTicket[]>(
+        'GET_TURBINE_MAINTENANCE', 
+        { turbineId }
+      )
+    } catch (error) {
+      console.warn("Failed to fetch turbine maintenance tickets using Maximo API, falling back to mock data", error)
+      // 使用模擬數據作為備用選項
+      return getSimulatedTurbineMaintenanceTickets(turbineId);
+    }
+  }
+  
+  // 不使用API時，返回模擬數據
+  return getSimulatedTurbineMaintenanceTickets(turbineId);
+}
+
+// 模擬風機異常事件數據
+function getSimulatedTurbineAlerts(turbineId: string): Promise<TurbineAlert[]> {
+  // 根據turbineId的最後一個字元來隨機生成不同數量的警報
+  const lastChar = turbineId.charAt(turbineId.length - 1);
+  const numAlerts = (parseInt(lastChar, 36) % 4) + (Math.random() > 0.7 ? 1 : 0);
+  
+  const alertTypes = [
+    { description: "葉片振動過大", severity: "medium" },
+    { description: "齒輪箱溫度異常", severity: "high" },
+    { description: "機艙方向偏移", severity: "low" },
+    { description: "發電機軸承溫度升高", severity: "medium" },
+    { description: "控制系統通訊中斷", severity: "critical" },
+    { description: "葉片裂紋檢測", severity: "high" },
+    { description: "葉片結冰", severity: "medium" },
+    { description: "油壓系統壓力不足", severity: "high" },
+    { description: "轉速超出安全範圍", severity: "critical" },
+    { description: "剎車系統異常", severity: "high" }
+  ];
+  
+  const alerts: TurbineAlert[] = [];
+  const now = new Date();
+  
+  // 生成警報數據
+  for (let i = 0; i < numAlerts; i++) {
+    const alertIndex = (parseInt(lastChar, 36) + i) % alertTypes.length;
+    const daysAgo = Math.floor(Math.random() * 10);
+    const hoursAgo = Math.floor(Math.random() * 24);
+    const timestamp = new Date(now);
+    timestamp.setDate(timestamp.getDate() - daysAgo);
+    timestamp.setHours(timestamp.getHours() - hoursAgo);
+    
+    const isResolved = Math.random() > 0.6;
+    let resolvedAt: string | undefined = undefined;
+    
+    if (isResolved) {
+      const resolvedDate = new Date(timestamp);
+      resolvedDate.setHours(resolvedDate.getHours() + Math.floor(Math.random() * 8) + 1);
+      resolvedAt = resolvedDate.toISOString();
+    }
+    
+    alerts.push({
+      id: `alert-${turbineId}-${i}-${Date.now()}`,
+      turbineId,
+      timestamp: timestamp.toISOString(),
+      description: alertTypes[alertIndex].description,
+      severity: alertTypes[alertIndex].severity as 'low' | 'medium' | 'high' | 'critical',
+      isResolved,
+      resolvedAt
+    });
+  }
+  
+  // 按時間排序
+  alerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(alerts), 500);
+  });
+}
+
+// 模擬風機維修工單數據
+function getSimulatedTurbineMaintenanceTickets(turbineId: string): Promise<MaintenanceTicket[]> {
+  // 根據turbineId的最後一個字元來隨機生成不同數量的工單
+  const lastChar = turbineId.charAt(turbineId.length - 1);
+  const numTickets = (parseInt(lastChar, 36) % 3) + (Math.random() > 0.5 ? 1 : 0);
+  
+  const ticketTypes = [
+    { description: "季度例行維護檢查", type: "PM", hours: 4, priority: "normal" },
+    { description: "葉片檢查與清潔", type: "PM", hours: 6, priority: "normal" },
+    { description: "齒輪箱潤滑油更換", type: "PM", hours: 5, priority: "normal" },
+    { description: "電氣系統檢查", type: "PM", hours: 3, priority: "normal" },
+    { description: "風速風向感測器校準", type: "PM", hours: 2, priority: "low" },
+    { description: "葉片裂紋修復", type: "CM", hours: 12, priority: "high" },
+    { description: "齒輪箱異常聲音排查", type: "CM", hours: 8, priority: "high" },
+    { description: "控制系統重啟與校準", type: "CM", hours: 6, priority: "high" },
+    { description: "緊急停機系統維修", type: "CM", hours: 10, priority: "urgent" },
+    { description: "發電機軸承更換", type: "CM", hours: 24, priority: "high" }
+  ];
+  
+  const tickets: MaintenanceTicket[] = [];
+  const now = new Date();
+  
+  // 生成工單數據
+  for (let i = 0; i < numTickets; i++) {
+    const ticketIndex = (parseInt(lastChar, 36) + i) % ticketTypes.length;
+    const daysAhead = Math.floor(Math.random() * 14);
+    const scheduledDate = new Date(now);
+    scheduledDate.setDate(scheduledDate.getDate() + daysAhead);
+    
+    // 生成隨機的狀態
+    const statuses = ['pending', 'in-progress', 'completed', 'cancelled'];
+    const statusIndex = Math.floor(Math.random() * (daysAhead < 2 ? 2 : 4)); // 如果日期接近，則狀態應該是pending或in-progress
+    
+    const details = ticketTypes[ticketIndex].type === 'PM' 
+      ? `執行標準${ticketTypes[ticketIndex].description}程序，確保各項關鍵參數符合規範。`
+      : `檢查並修復${ticketTypes[ticketIndex].description.replace('修復', '').replace('排查', '')}問題，恢復正常運行狀態。`;
+    
+    tickets.push({
+      id: `MT-${turbineId.substring(0, 5)}-${Date.now().toString().substring(7)}-${i}`,
+      turbineId,
+      description: ticketTypes[ticketIndex].description,
+      type: ticketTypes[ticketIndex].type as 'PM' | 'CM',
+      status: statuses[statusIndex] as 'pending' | 'in-progress' | 'completed' | 'cancelled',
+      scheduledDate: scheduledDate.toISOString(),
+      estimatedHours: ticketTypes[ticketIndex].hours,
+      priority: ticketTypes[ticketIndex].priority as 'low' | 'normal' | 'high' | 'urgent',
+      assignedTo: Math.random() > 0.3 ? "維護團隊" + ((parseInt(lastChar, 36) % 3) + 1) : undefined,
+      details: details
+    });
+  }
+  
+  // 按照日期排序
+  tickets.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+  
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(tickets), 500);
   });
 }

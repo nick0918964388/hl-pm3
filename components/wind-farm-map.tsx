@@ -27,6 +27,7 @@ interface Turbine {
   rpm: number;
   power: number;
   maintenanceTickets: number;
+  code?: string;
 }
 
 // 組件屬性
@@ -49,7 +50,7 @@ const statusColors = {
 // 創建自定義標記圖標
 const createTurbineIcon = (status: 'normal' | 'warning' | 'error' | 'maintenance', isSelected: boolean) => {
   const color = statusColors[status];
-  const size = isSelected ? 32 : 26;
+  const size = isSelected ? 40 : 34;
   const borderWidth = isSelected ? 3 : 2;
   
   return L.divIcon({
@@ -57,7 +58,7 @@ const createTurbineIcon = (status: 'normal' | 'warning' | 'error' | 'maintenance
       <div style="
         width: ${size}px;
         height: ${size}px;
-        background-color: white;
+        background-color: rgba(255, 255, 255, 0.9);
         border-radius: 50%;
         border: ${borderWidth}px solid ${color};
         display: flex;
@@ -65,13 +66,21 @@ const createTurbineIcon = (status: 'normal' | 'warning' | 'error' | 'maintenance
         justify-content: center;
         box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         ${isSelected ? 'transform: scale(1.1);' : ''}
+        position: relative;
+        overflow: hidden;
       ">
         <div style="
-          width: 55%;
-          height: 55%;
-          background-color: ${color};
-          border-radius: 50%;
-        "></div>
+          font-size: ${size * 0.65}px;
+          color: ${color};
+          transform: rotate(${Math.random() * 360}deg);
+          animation: spin 15s linear infinite;
+        ">🌀</div>
+        <style>
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        </style>
       </div>
     `,
     className: '',
@@ -83,7 +92,7 @@ const createTurbineIcon = (status: 'normal' | 'warning' | 'error' | 'maintenance
 // 創建變電站圖標
 const createSubstationIcon = (status: 'normal' | 'warning' | 'error' | 'maintenance', isSelected: boolean) => {
   const color = statusColors[status];
-  const size = isSelected ? 40 : 32;
+  const size = isSelected ? 46 : 40;
   const borderWidth = isSelected ? 3 : 2;
   
   return L.divIcon({
@@ -91,21 +100,20 @@ const createSubstationIcon = (status: 'normal' | 'warning' | 'error' | 'maintena
       <div style="
         width: ${size}px;
         height: ${size}px;
-        background-color: white;
+        background-color: rgba(255, 255, 255, 0.9);
         border: ${borderWidth}px solid ${color};
+        border-radius: 16%;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        transform: rotate(45deg);
-        ${isSelected ? 'transform: rotate(45deg) scale(1.1);' : ''}
+        box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+        ${isSelected ? 'transform: scale(1.1);' : ''}
       ">
         <div style="
-          width: 60%;
-          height: 60%;
-          background-color: ${color};
-          transform: rotate(0deg);
-        "></div>
+          font-size: ${size * 0.5}px;
+          color: ${color};
+          font-weight: bold;
+        ">🏭</div>
       </div>
     `,
     className: '',
@@ -145,7 +153,7 @@ const WindFarmMap = ({ turbines, selectedTurbineId, onTurbineClick, cables, subs
         zoomSnap: 0.5,
         zoomDelta: 0.5,
         wheelPxPerZoomLevel: 120
-      }).setView([23.5, 121.2], 7); // 台灣中心點，縮小比例以顯示全台灣
+      }).setView([23.9, 130.35], 6); // 調整中心點到台灣與風機之間，並設置適當的縮放級別
       
       // 添加底圖
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -221,16 +229,46 @@ const WindFarmMap = ({ turbines, selectedTurbineId, onTurbineClick, cables, subs
       })
         .addTo(map)
         .bindPopup(`
-          <div class="p-2">
-            <h3 class="font-bold">${turbine.name}</h3>
-            <p class="mb-1">狀態: ${getStatusText(turbine.status)}</p>
-            <p class="mb-1">轉速: ${turbine.rpm} RPM</p>
-            <p class="mb-1">發電量: ${turbine.power} MW</p>
-            <p>工單數: ${turbine.maintenanceTickets}</p>
+          <div class="p-3" style="min-width: 200px; border-radius: 8px; overflow: hidden;">
+            <div style="margin: -16px -16px 10px -16px; padding: 10px 16px; background: linear-gradient(to right, #1e293b, #334155); color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <div style="font-size: 16px; display: flex; align-items: center;">
+                <span style="width: 10px; height: 10px; border-radius: 50%; background-color: ${statusColors[turbine.status]}; margin-right: 6px; display: inline-block;"></span>
+                ${turbine.code || turbine.id}
+              </div>
+              <div style="font-size: 12px; opacity: 0.9; margin-left: 16px;">${turbine.name}</div>
+            </div>
+            
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+              <span style="font-weight: 500;">狀態: ${getStatusText(turbine.status)}</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+              <div style="background-color: rgba(241, 245, 249, 0.8); padding: 8px; border-radius: 4px;">
+                <div style="font-size: 12px; color: #64748b;">轉速</div>
+                <div style="font-size: 16px; font-weight: bold; color: #334155;">${turbine.rpm} RPM</div>
+              </div>
+              <div style="background-color: rgba(241, 245, 249, 0.8); padding: 8px; border-radius: 4px;">
+                <div style="font-size: 12px; color: #64748b;">發電量</div>
+                <div style="font-size: 16px; font-weight: bold; color: #334155;">${turbine.power} MW</div>
+              </div>
+            </div>
+            
+            <div style="margin-top: 12px; padding: 8px; border-radius: 4px; background-color: ${
+              turbine.maintenanceTickets > 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(34, 197, 94, 0.08)'
+            }; display: flex; align-items: center; justify-content: space-between; border-left: 3px solid ${
+              turbine.maintenanceTickets > 0 ? '#ef4444' : '#22c55e'
+            };">
+              <span style="color: #64748b;">工單數量</span>
+              <span style="font-weight: bold; color: ${
+                turbine.maintenanceTickets > 0 ? '#ef4444' : '#22c55e'
+              };">${turbine.maintenanceTickets}</span>
+            </div>
           </div>
         `, { 
           closeButton: true,
-          className: 'custom-popup'
+          className: 'custom-popup',
+          maxWidth: 300,
+          minWidth: 220
         });
         
       // 添加點擊事件
@@ -257,15 +295,47 @@ const WindFarmMap = ({ turbines, selectedTurbineId, onTurbineClick, cables, subs
       })
         .addTo(map)
         .bindPopup(`
-          <div class="p-2">
-            <h3 class="font-bold">${substation.name}</h3>
-            <p class="mb-1">狀態: ${getStatusText(substation.status)}</p>
-            <p class="mb-1">容量: ${substation.capacity} MW</p>
-            <p>當前負載: ${substation.currentLoad} MW (${(substation.currentLoad / substation.capacity * 100).toFixed(1)}%)</p>
+          <div class="p-3" style="min-width: 220px; border-radius: 8px; overflow: hidden;">
+            <div style="margin: -16px -16px 10px -16px; padding: 10px 16px; background: linear-gradient(to right, #1e293b, #334155); color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <div style="font-size: 16px; display: flex; align-items: center;">
+                <span style="width: 10px; height: 10px; border-radius: 50%; background-color: ${statusColors[substation.status]}; margin-right: 6px; display: inline-block;"></span>
+                ${substation.name}
+              </div>
+              <div style="font-size: 12px; opacity: 0.9; margin-left: 16px;">變電站</div>
+            </div>
+            
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+              <span style="font-weight: 500;">狀態: ${getStatusText(substation.status)}</span>
+            </div>
+            
+            <div style="background-color: rgba(241, 245, 249, 0.8); padding: 10px; border-radius: 4px; margin-bottom: 8px;">
+              <div style="font-size: 12px; color: #64748b;">變電站容量</div>
+              <div style="font-size: 16px; font-weight: bold; color: #334155;">${substation.capacity} MW</div>
+            </div>
+            
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px; border-radius: 4px; background-color: rgba(241, 245, 249, 0.8); border-left: 3px solid ${
+              substation.currentLoad / substation.capacity > 0.8 ? '#ef4444' : 
+              substation.currentLoad / substation.capacity > 0.6 ? '#f59e0b' : 
+              '#22c55e'
+            };">
+              <div>
+                <div style="font-size: 12px; color: #64748b;">當前負載</div>
+                <div style="font-size: 16px; font-weight: bold; color: #334155;">${substation.currentLoad} MW</div>
+              </div>
+              <div style="font-weight: bold; color: ${
+                substation.currentLoad / substation.capacity > 0.8 ? '#ef4444' : 
+                substation.currentLoad / substation.capacity > 0.6 ? '#f59e0b' : 
+                '#22c55e'
+              };">
+                ${(substation.currentLoad / substation.capacity * 100).toFixed(1)}%
+              </div>
+            </div>
           </div>
         `, { 
           closeButton: true,
-          className: 'custom-popup'
+          className: 'custom-popup',
+          maxWidth: 300,
+          minWidth: 220
         });
       
       // 保存標記引用
@@ -296,45 +366,118 @@ const WindFarmMap = ({ turbines, selectedTurbineId, onTurbineClick, cables, subs
     // 清除之前的電纜線
     cablesLayerRef.current.clearLayers();
     
-    // 如果沒有電纜數據或不顯示電纜，則返回
-    if (cables.length === 0) return;
+    // 如果沒有電纜數據，則返回
+    if (cables.length === 0) {
+      console.log('沒有電纜數據可顯示');
+      return;
+    }
+
+    console.log('開始繪製電纜連接線，總數:', cables.length);
+    console.log('電纜數據:', cables);
+    console.log('變電站數據:', substations);
     
     // 創建所有元素的位置映射
     const locations: {[key: string]: [number, number]} = {};
     
-    // 添加風機位置
+    // 添加風機位置 - 使用多種可能的ID格式
     turbines.forEach(turbine => {
+      // 標準格式
       locations[`turbine-${turbine.id}`] = [turbine.lat, turbine.lng];
+      
+      // 直接使用ID作為鍵（無前綴）
+      locations[turbine.id] = [turbine.lat, turbine.lng];
+      
+      // 如果有code屬性，也添加映射
+      if (turbine.code) {
+        locations[`turbine-${turbine.code}`] = [turbine.lat, turbine.lng];
+        locations[turbine.code] = [turbine.lat, turbine.lng];
+      }
+      
+      // 如果有name屬性，也添加映射
+      if (turbine.name) {
+        locations[`turbine-${turbine.name}`] = [turbine.lat, turbine.lng];
+        locations[turbine.name] = [turbine.lat, turbine.lng];
+      }
+      
+      console.log(`風機 ${turbine.id} / ${turbine.code || ''} / ${turbine.name || ''} 位置: [${turbine.lat}, ${turbine.lng}]`);
     });
     
-    // 添加變電站位置
+    // 添加變電站位置 - 支持多種可能的ID格式
     substations.forEach(substation => {
+      // 標準格式
       locations[`substation-${substation.id}`] = [substation.coordinates.lat, substation.coordinates.lng];
+      
+      // 直接使用ID作為鍵（無前綴）
+      locations[substation.id] = [substation.coordinates.lat, substation.coordinates.lng];
+      
+      // 如果有name屬性，也添加映射
+      if (substation.name) {
+        locations[`substation-${substation.name}`] = [substation.coordinates.lat, substation.coordinates.lng];
+        locations[substation.name] = [substation.coordinates.lat, substation.coordinates.lng];
+      }
+      
+      console.log(`變電站 ${substation.id} / ${substation.name || ''} 位置: [${substation.coordinates.lat}, ${substation.coordinates.lng}]`);
     });
+    
+    console.log('可用位置對應表:', locations);
     
     // 繪製電纜線
     cables.forEach(cable => {
-      const sourceKey = `${cable.sourceType}-${cable.sourceId}`;
-      const targetKey = `${cable.targetType}-${cable.targetId}`;
+      // 嘗試多種可能的來源/目標格式
+      const possibleSourceKeys = [
+        `${cable.sourceType}-${cable.sourceId}`,
+        cable.sourceId,
+        `turbine-${cable.sourceId}`
+      ];
+      
+      const possibleTargetKeys = [
+        `${cable.targetType}-${cable.targetId}`,
+        cable.targetId,
+        `turbine-${cable.targetId}`,
+        `substation-${cable.targetId}`
+      ];
+      
+      console.log(`嘗試連接: ${cable.sourceId} 到 ${cable.targetId}`);
+      console.log('可能的來源鍵:', possibleSourceKeys);
+      console.log('可能的目標鍵:', possibleTargetKeys);
+      
+      // 尋找有效的來源和目標位置
+      let sourceLocation = null;
+      for (const key of possibleSourceKeys) {
+        if (locations[key]) {
+          sourceLocation = locations[key];
+          console.log(`找到來源位置，使用鍵: ${key}`);
+          break;
+        }
+      }
+      
+      let targetLocation = null;
+      for (const key of possibleTargetKeys) {
+        if (locations[key]) {
+          targetLocation = locations[key];
+          console.log(`找到目標位置，使用鍵: ${key}`);
+          break;
+        }
+      }
       
       // 檢查源和目標位置是否存在
-      if (!locations[sourceKey] || !locations[targetKey]) return;
+      if (!sourceLocation || !targetLocation) {
+        console.warn(`無法找到連接位置: 從 ${cable.sourceId} 到 ${cable.targetId}`);
+        return;
+      }
       
-      const sourceLocation = locations[sourceKey];
-      const targetLocation = locations[targetKey];
+      console.log(`成功連接: 從 ${cable.sourceId} 到 ${cable.targetId}`);
       
-      // 根據狀態確定線的顏色
-      const lineColor = 
-        cable.status === 'normal' ? '#22c55e' :
-        cable.status === 'warning' ? '#f59e0b' : '#ef4444';
+      // 固定使用綠色作為電纜線顏色，不再根據狀態區分
+      const lineColor = '#22c55e'; // 綠色
       
       // 創建線條樣式
       const lineOptions = {
         color: lineColor,
-        weight: 2,
+        weight: 3,  // 增加線條寬度使其更明顯
         opacity: 0.8,
         dashArray: '5, 10', // 虛線樣式
-        className: 'animated-line'  // 用於CSS動畫
+        className: `animated-line flow-${cable.status || 'normal'}`, // 添加狀態類以區分不同流量動畫
       };
       
       // 創建折線
@@ -342,15 +485,49 @@ const WindFarmMap = ({ turbines, selectedTurbineId, onTurbineClick, cables, subs
       
       // 為折線添加彈出信息
       polyline.bindPopup(`
-        <div class="p-2">
-          <h3 class="font-bold">電纜連接</h3>
-          <p class="mb-1">狀態: ${cable.status === 'normal' ? '正常' : cable.status === 'warning' ? '警告' : '故障'}</p>
-          <p>電力流量: ${cable.powerFlow.toFixed(1)} MW</p>
+        <div class="p-3" style="min-width: 200px; border-radius: 8px; overflow: hidden;">
+          <div style="margin: -16px -16px 10px -16px; padding: 10px 16px; background: linear-gradient(to right, #1e293b, #334155); color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="font-size: 16px; display: flex; align-items: center;">
+              <span style="width: 10px; height: 10px; border-radius: 50%; background-color: ${
+                cable.status === 'normal' ? '#22c55e' : 
+                cable.status === 'warning' ? '#f59e0b' : '#ef4444'
+              }; margin-right: 6px; display: inline-block;"></span>
+              電纜連接
+            </div>
+            <div style="font-size: 12px; opacity: 0.9; margin-left: 16px;">Cable Connection</div>
+          </div>
+          
+          <div style="margin-bottom: 10px; background-color: rgba(241, 245, 249, 0.8); padding: 8px; border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+              <span style="color: #64748b;">從:</span>
+              <span style="font-weight: 500; color: #334155;">${cable.sourceId}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #64748b;">到:</span>
+              <span style="font-weight: 500; color: #334155;">${cable.targetId}</span>
+            </div>
+          </div>
+          
+          <div style="display: flex; align-items: center; margin: 12px 0 8px 0;">
+            <span style="font-weight: 500;">狀態: 
+              <span style="color: ${
+                cable.status === 'normal' ? '#22c55e' : 
+                cable.status === 'warning' ? '#f59e0b' : '#ef4444'
+              };">${cable.status === 'normal' ? '正常' : cable.status === 'warning' ? '警告' : '故障'}</span>
+            </span>
+          </div>
+          
+          ${cable.powerFlow ? `
+          <div style="background-color: rgba(241, 245, 249, 0.8); padding: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 12px; color: #64748b;">電力流量</div>
+            <div style="font-size: 16px; font-weight: bold; color: #334155;">${typeof cable.powerFlow === 'number' ? cable.powerFlow.toFixed(1) : cable.powerFlow} MW</div>
+          </div>
+          ` : ''}
         </div>
       `);
     });
     
-    // 添加CSS動畫
+    // 添加增強的CSS動畫
     if (!document.getElementById('animated-line-css')) {
       const style = document.createElement('style');
       style.id = 'animated-line-css';
@@ -360,8 +537,33 @@ const WindFarmMap = ({ turbines, selectedTurbineId, onTurbineClick, cables, subs
             stroke-dashoffset: -30;
           }
         }
+        
+        @keyframes glowAnimation {
+          0%, 100% {
+            stroke-opacity: 0.6;
+            filter: drop-shadow(0 0 2px rgba(34, 197, 94, 0.3));
+          }
+          50% {
+            stroke-opacity: 1;
+            filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.6));
+          }
+        }
+        
         .animated-line {
-          animation: dashAnimation 3s linear infinite;
+          animation: dashAnimation 3s linear infinite, glowAnimation 2s ease-in-out infinite;
+          stroke-linecap: round;
+        }
+        
+        .flow-normal {
+          animation-duration: 3s;
+        }
+        
+        .flow-warning {
+          animation-duration: 5s;
+        }
+        
+        .flow-error {
+          animation-duration: 8s;
         }
       `;
       document.head.appendChild(style);

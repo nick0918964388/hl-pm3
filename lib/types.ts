@@ -64,3 +64,26 @@ export interface Substation {
   currentLoad: number  // 當前負載 (MW)
   status: 'normal' | 'warning' | 'error' | 'maintenance'  // 變電站狀態
 }
+
+export interface TurbineAlert {
+  id: string;
+  turbineId: string;
+  timestamp: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  isResolved: boolean;
+  resolvedAt?: string;
+}
+
+export interface MaintenanceTicket {
+  id: string;
+  turbineId: string;
+  description: string;
+  type: 'PM' | 'CM'; // PM: 預防性維護, CM: 修復性維護
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  scheduledDate: string;
+  estimatedHours: number;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  assignedTo?: string;
+  details?: string;
+}

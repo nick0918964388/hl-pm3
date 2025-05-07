@@ -47,8 +47,11 @@ const API_ENDPOINTS = {
   newTaskType: "NEW_TASK_TYPE",
   deleteTaskType: "DELETE_TASK_TYPE",
   
-  // New endpoint for fetching turbine historical power
-  getTurbineHistoricalPower: "GET_TURBINE_HISTORICAL_POWER"
+  // Turbine data and event endpoints
+  getTurbineHistoricalPower: "GET_TURBINE_HISTORICAL_POWER",
+  getEvents: "GET_EVENTS",  // 異常事件端點
+  getWorkOrders: "GET_WO",  // 維修工單端點
+  createCMWorkOrder: "MOBILEAPP_CREATE_CM_WORKORDER" // 創建修復性維護工單
 }
 
 // Maximo API Call Function
@@ -161,6 +164,9 @@ const mockTurbines: { [key: string]: Turbine[] } = {
     const baseLat = 24.7 + (row * 0.05)
     const baseLng = 122.1 + (col * 0.05)
 
+    // 添加 groupId 屬性
+    let groupId = series === "HL21" ? "HL2A" : "HL2B"
+
     return {
       id: `WB${String(i + 30).padStart(3, "0")}`,
       code: code,
@@ -171,7 +177,8 @@ const mockTurbines: { [key: string]: Turbine[] } = {
       status,
       rpm: Number(rpm.toFixed(1)),
       power: Number(power.toFixed(1)),
-      maintenanceTickets
+      maintenanceTickets,
+      groupId
     }
   }),
   "2": Array.from({ length: 25 }, (_, i) => {
@@ -526,18 +533,19 @@ export async function deleteProject(projectId: string): Promise<void> {
 
 // API Functions - Turbine Management
 export async function fetchTurbines(projectId: string): Promise<Turbine[]> {
-  if (API_CONFIG.useMaximoAPI) {
-    try {
-      return await callMaximoAPI<Turbine[]>(API_ENDPOINTS.getTurbines, { projectId })
-    } catch (error) {
-      console.warn("Failed to fetch turbines using Maximo API, falling back to mock data", error)
+  try {
+    if (API_CONFIG.useMaximoAPI) {
+      const data = await callMaximoAPI<Turbine[]>(API_ENDPOINTS.getTurbines, { projectId })
+      return data
+    } else {
+      // 模擬API延遲
+      await new Promise(resolve => setTimeout(resolve, 500))
       return mockTurbines[projectId] || []
     }
+  } catch (error) {
+    console.error("Error fetching turbines:", error)
+    return mockTurbines[projectId] || []
   }
-  
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 700))
-  return mockTurbines[projectId] || []
 }
 
 export async function createTurbine(projectId: string, turbine: Turbine): Promise<Turbine> {
@@ -972,6 +980,64 @@ export async function fetchTurbineHistoricalPower(turbineId: string, period: str
   return getSimulatedTurbineHistoricalPower(turbineId, period);
 }
 
+// 通過風機編碼獲取歷史發電量
+export async function fetchTurbineHistoricalPowerByCode(turbineCode: string, period: string = '7d'): Promise<{date: string, power: number}[]> {
+  if (API_CONFIG.useMaximoAPI) {
+    try {
+      return await callMaximoAPI<{date: string, power: number}[]>(
+        API_ENDPOINTS.getTurbineHistoricalPower, 
+        { turbineCode, period }
+      )
+    } catch (error) {
+      console.warn("Failed to fetch turbine historical power by code using Maximo API, falling back to mock data", error)
+      
+      // 嘗試使用風機編碼查找風機ID
+      try {
+        // 搜尋所有項目的風機
+        let turbineId = '';
+        for (const projectId in mockTurbines) {
+          const turbine = mockTurbines[projectId].find(t => t.code === turbineCode);
+          if (turbine) {
+            turbineId = turbine.id;
+            break;
+          }
+        }
+        
+        if (turbineId) {
+          return getSimulatedTurbineHistoricalPower(turbineId, period);
+        }
+      } catch (innerError) {
+        console.error("Error finding turbine by code:", innerError);
+      }
+      
+      // 如果找不到風機，返回空數組
+      return [];
+    }
+  }
+  
+  // 嘗試使用風機編碼查找風機ID
+  try {
+    // 搜尋所有項目的風機
+    let turbineId = '';
+    for (const projectId in mockTurbines) {
+      const turbine = mockTurbines[projectId].find(t => t.code === turbineCode);
+      if (turbine) {
+        turbineId = turbine.id;
+        break;
+      }
+    }
+    
+    if (turbineId) {
+      return getSimulatedTurbineHistoricalPower(turbineId, period);
+    }
+  } catch (error) {
+    console.error("Error finding turbine by code:", error);
+  }
+  
+  // 如果找不到風機，返回空數組
+  return [];
+}
+
 // 模擬風機歷史發電量數據
 function getSimulatedTurbineHistoricalPower(turbineId: string, period: string): Promise<{date: string, power: number}[]> {
   // 根據不同時間周期生成不同的數據點數量
@@ -1028,41 +1094,165 @@ function getSimulatedTurbineHistoricalPower(turbineId: string, period: string): 
 }
 
 // 獲取風機異常事件
-export async function fetchTurbineAlerts(turbineId: string): Promise<TurbineAlert[]> {
+export async function fetchTurbineAlerts(turbineIdOrCode: string, isCode: boolean = false): Promise<TurbineAlert[]> {
+  if (isCode) {
+    return fetchTurbineAlertsByCode(turbineIdOrCode);
+  }
+  
   if (API_CONFIG.useMaximoAPI) {
     try {
       return await callMaximoAPI<TurbineAlert[]>(
-        'GET_TURBINE_ALERTS', 
-        { turbineId }
+        API_ENDPOINTS.getEvents, 
+        { turbineId: turbineIdOrCode }
       )
     } catch (error) {
       console.warn("Failed to fetch turbine alerts using Maximo API, falling back to mock data", error)
       // 使用模擬數據作為備用選項
-      return getSimulatedTurbineAlerts(turbineId);
+      return getSimulatedTurbineAlerts(turbineIdOrCode);
     }
   }
   
   // 不使用API時，返回模擬數據
-  return getSimulatedTurbineAlerts(turbineId);
+  return getSimulatedTurbineAlerts(turbineIdOrCode);
 }
 
 // 獲取風機維修工單
-export async function fetchTurbineMaintenanceTickets(turbineId: string): Promise<MaintenanceTicket[]> {
+export async function fetchTurbineMaintenanceTickets(turbineIdOrCode: string, isCode: boolean = false): Promise<MaintenanceTicket[]> {
+  if (isCode) {
+    return fetchTurbineMaintenanceTicketsByCode(turbineIdOrCode);
+  }
+  
   if (API_CONFIG.useMaximoAPI) {
     try {
       return await callMaximoAPI<MaintenanceTicket[]>(
-        'GET_TURBINE_MAINTENANCE', 
-        { turbineId }
+        API_ENDPOINTS.getWorkOrders, 
+        { turbineId: turbineIdOrCode }
       )
     } catch (error) {
       console.warn("Failed to fetch turbine maintenance tickets using Maximo API, falling back to mock data", error)
       // 使用模擬數據作為備用選項
-      return getSimulatedTurbineMaintenanceTickets(turbineId);
+      return getSimulatedTurbineMaintenanceTickets(turbineIdOrCode);
     }
   }
   
   // 不使用API時，返回模擬數據
-  return getSimulatedTurbineMaintenanceTickets(turbineId);
+  return getSimulatedTurbineMaintenanceTickets(turbineIdOrCode);
+}
+
+// 通過風機編碼獲取異常事件
+export async function fetchTurbineAlertsByCode(turbineCode: string): Promise<TurbineAlert[]> {
+  if (API_CONFIG.useMaximoAPI) {
+    try {
+      return await callMaximoAPI<TurbineAlert[]>(
+        API_ENDPOINTS.getEvents, 
+        { turbineCode }
+      )
+    } catch (error) {
+      console.warn("Failed to fetch turbine alerts by code using Maximo API, falling back to mock data", error)
+      
+      // 嘗試使用風機編碼查找風機ID
+      try {
+        // 搜尋所有項目的風機
+        let turbineId = '';
+        for (const projectId in mockTurbines) {
+          const turbine = mockTurbines[projectId].find(t => t.code === turbineCode);
+          if (turbine) {
+            turbineId = turbine.id;
+            break;
+          }
+        }
+        
+        if (turbineId) {
+          return getSimulatedTurbineAlerts(turbineId);
+        }
+      } catch (innerError) {
+        console.error("Error finding turbine by code:", innerError);
+      }
+      
+      // 如果找不到風機，返回空數組
+      return [];
+    }
+  }
+  
+  // 嘗試使用風機編碼查找風機ID
+  try {
+    // 搜尋所有項目的風機
+    let turbineId = '';
+    for (const projectId in mockTurbines) {
+      const turbine = mockTurbines[projectId].find(t => t.code === turbineCode);
+      if (turbine) {
+        turbineId = turbine.id;
+        break;
+      }
+    }
+    
+    if (turbineId) {
+      return getSimulatedTurbineAlerts(turbineId);
+    }
+  } catch (error) {
+    console.error("Error finding turbine by code:", error);
+  }
+  
+  // 如果找不到風機，返回空數組
+  return [];
+}
+
+// 通過風機編碼獲取維修工單
+export async function fetchTurbineMaintenanceTicketsByCode(turbineCode: string): Promise<MaintenanceTicket[]> {
+  if (API_CONFIG.useMaximoAPI) {
+    try {
+      return await callMaximoAPI<MaintenanceTicket[]>(
+        API_ENDPOINTS.getWorkOrders, 
+        { turbineCode }
+      )
+    } catch (error) {
+      console.warn("Failed to fetch maintenance tickets by code using Maximo API, falling back to mock data", error)
+      
+      // 嘗試使用風機編碼查找風機ID
+      try {
+        // 搜尋所有項目的風機
+        let turbineId = '';
+        for (const projectId in mockTurbines) {
+          const turbine = mockTurbines[projectId].find(t => t.code === turbineCode);
+          if (turbine) {
+            turbineId = turbine.id;
+            break;
+          }
+        }
+        
+        if (turbineId) {
+          return getSimulatedTurbineMaintenanceTickets(turbineId);
+        }
+      } catch (innerError) {
+        console.error("Error finding turbine by code:", innerError);
+      }
+      
+      // 如果找不到風機，返回空數組
+      return [];
+    }
+  }
+  
+  // 嘗試使用風機編碼查找風機ID
+  try {
+    // 搜尋所有項目的風機
+    let turbineId = '';
+    for (const projectId in mockTurbines) {
+      const turbine = mockTurbines[projectId].find(t => t.code === turbineCode);
+      if (turbine) {
+        turbineId = turbine.id;
+        break;
+      }
+    }
+    
+    if (turbineId) {
+      return getSimulatedTurbineMaintenanceTickets(turbineId);
+    }
+  } catch (error) {
+    console.error("Error finding turbine by code:", error);
+  }
+  
+  // 如果找不到風機，返回空數組
+  return [];
 }
 
 // 模擬風機異常事件數據
@@ -1181,4 +1371,45 @@ function getSimulatedTurbineMaintenanceTickets(turbineId: string): Promise<Maint
   return new Promise((resolve) => {
     setTimeout(() => resolve(tickets), 500);
   });
+}
+
+// 創建修復性維護工單 (CM: Corrective Maintenance)
+export async function createCMWorkOrder(params: { 
+  equipmentId: string;  // 設備ID (assetnum)
+  description: string;  // 故障描述
+}): Promise<{ 
+  id: string;           // 工單號
+  status: string;       // 工單狀態
+  equipmentId: string;  // 設備ID
+  description: string;  // 描述
+  worktype: string;     // 工單類型
+  [key: string]: any;   // 其他字段
+}> {
+  if (API_CONFIG.useMaximoAPI) {
+    try {
+      return await callMaximoAPI(API_ENDPOINTS.createCMWorkOrder, { params })
+    } catch (error) {
+      console.warn("Failed to create CM workorder using Maximo API", error)
+      throw error;
+    }
+  }
+  
+  // 模擬API延遲和響應
+  await new Promise(resolve => setTimeout(resolve, 700))
+  
+  // 模擬成功響應
+  return {
+    id: `WO-${Date.now().toString().slice(-6)}`,
+    status: "APPR",
+    created: new Date().toISOString(),
+    equipmentId: params.equipmentId,
+    equipmentName: `${params.equipmentId} 風力發電機`,
+    location: "",
+    description: params.description,
+    pmType: "",
+    frequency: "",
+    creator: "系統",
+    systemEngineer: "",
+    worktype: "CM"
+  }
 }

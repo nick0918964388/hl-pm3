@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { fetchTurbineHistoricalPower } from '@/lib/api';
+import { fetchTurbineHistoricalPower, fetchTurbineHistoricalPowerByCode } from '@/lib/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
@@ -23,7 +23,7 @@ export function TurbinePowerHistory({ turbineId, turbineCode }: TurbinePowerHist
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchTurbineHistoricalPower(turbineId, period);
+        const data = await fetchTurbineHistoricalPowerByCode(turbineCode, period);
         setPowerData(data);
       } catch (err) {
         console.error('Failed to fetch power data:', err);
@@ -34,7 +34,7 @@ export function TurbinePowerHistory({ turbineId, turbineCode }: TurbinePowerHist
     };
 
     loadPowerData();
-  }, [turbineId, period]);
+  }, [turbineCode, period]);
 
   // 格式化日期顯示
   const formatDateForDisplay = (dateString: string) => {

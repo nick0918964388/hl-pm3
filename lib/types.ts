@@ -35,6 +35,7 @@ export interface Turbine {
   rpm?: number
   power?: number
   maintenanceTickets?: number
+  groupId?: string
 }
 
 export interface TaskType {
@@ -80,7 +81,7 @@ export interface MaintenanceTicket {
   turbineId: string;
   description: string;
   type: 'PM' | 'CM'; // PM: 預防性維護, CM: 修復性維護
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  status: 'WAPPR' | 'INPRG' | 'COMP' | 'APPR' | 'REJECT';
   scheduledDate: string;
   estimatedHours: number;
   priority: 'low' | 'normal' | 'high' | 'urgent';

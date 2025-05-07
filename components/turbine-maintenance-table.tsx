@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import {
   ColumnDef,
   flexRender,
@@ -33,7 +33,7 @@ import { Button } from '@/components/ui/button'
 import { MaintenanceTicket } from '@/lib/types'
 import { fetchTurbineMaintenanceTickets } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
-import { format } from 'date-fns'
+import { format, isValid } from 'date-fns'
 import { Card, CardContent } from '@/components/ui/card'
 
 // 擴展RowData接口以支持展開/折疊列
@@ -58,8 +58,14 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
     const loadTickets = async () => {
       setLoading(true)
       try {
-        const data = await fetchTurbineMaintenanceTickets(turbineId)
-        setTickets(data)
+        // 優先使用 turbineCode 獲取工單
+        if (turbineCode) {
+          const data = await fetchTurbineMaintenanceTickets(turbineCode, true)
+          setTickets(data)
+        } else {
+          const data = await fetchTurbineMaintenanceTickets(turbineId)
+          setTickets(data)
+        }
       } catch (error) {
         console.error('Failed to fetch maintenance tickets:', error)
       } finally {
@@ -68,7 +74,7 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
     }
 
     loadTickets()
-  }, [turbineId])
+  }, [turbineId, turbineCode])
 
   // 工單類型配置
   const typeConfig = {
@@ -190,20 +196,42 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
       accessorKey: 'scheduledDate',
       header: '預計時間',
       cell: ({ row }) => {
-        const date = new Date(row.getValue('scheduledDate'))
-        const hours = row.original.estimatedHours
-        return (
-          <div className="flex flex-col">
-            <div className="flex items-center text-muted-foreground">
-              <CalendarClock className="mr-1 h-4 w-4" />
-              <span>{format(date, 'yyyy-MM-dd')}</span>
+        try {
+          const rawDate = row.getValue('scheduledDate');
+          const date = rawDate ? new Date(rawDate) : null;
+          const hours = row.original.estimatedHours;
+          
+          return (
+            <div className="flex flex-col">
+              <div className="flex items-center text-muted-foreground">
+                <CalendarClock className="mr-1 h-4 w-4" />
+                <span>
+                  {date && isValid(date) 
+                    ? format(date, 'yyyy-MM-dd') 
+                    : '日期未設定'}
+                </span>
+              </div>
+              <div className="flex items-center text-muted-foreground mt-1">
+                <Timer className="mr-1 h-4 w-4" />
+                <span>{hours || 0} 小時</span>
+              </div>
             </div>
-            <div className="flex items-center text-muted-foreground mt-1">
-              <Timer className="mr-1 h-4 w-4" />
-              <span>{hours} 小時</span>
+          );
+        } catch (error) {
+          console.error('Error formatting date:', error);
+          return (
+            <div className="flex flex-col">
+              <div className="flex items-center text-muted-foreground">
+                <CalendarClock className="mr-1 h-4 w-4" />
+                <span>日期格式錯誤</span>
+              </div>
+              <div className="flex items-center text-muted-foreground mt-1">
+                <Timer className="mr-1 h-4 w-4" />
+                <span>{row.original.estimatedHours || 0} 小時</span>
+              </div>
             </div>
-          </div>
-        )
+          );
+        }
       },
       sortingFn: 'datetime'
     },
@@ -223,6 +251,16 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
 
   // 渲染展開的詳細資訊
   const renderExpandedRow = (ticket: MaintenanceTicket) => {
+    // 安全地格式化日期
+    const formatScheduledDate = () => {
+      try {
+        const date = ticket.scheduledDate ? new Date(ticket.scheduledDate) : null;
+        return date && isValid(date) ? format(date, 'yyyy-MM-dd') : '日期未設定';
+      } catch (error) {
+        return '日期格式錯誤';
+      }
+    };
+
     return (
       <div className="p-4 bg-slate-50 space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -231,6 +269,7 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
             <Card>
               <CardContent className="p-4">
                 <p>{ticket.details || '無詳細資訊'}</p>
+                <p className="mt-2 text-sm text-muted-foreground">預計日期: {formatScheduledDate()}</p>
               </CardContent>
             </Card>
           </div>
@@ -307,9 +346,8 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <>
+                <Fragment key={row.id}>
                   <TableRow
-                    key={row.id}
                     data-state={row.getIsSelected() && "selected"}
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -325,7 +363,7 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               ))
             ) : (
               <TableRow>

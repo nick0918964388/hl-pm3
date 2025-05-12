@@ -1356,7 +1356,7 @@ function getSimulatedTurbineMaintenanceTickets(turbineId: string): Promise<Maint
       turbineId,
       description: ticketTypes[ticketIndex].description,
       type: ticketTypes[ticketIndex].type as 'PM' | 'CM',
-      status: statuses[statusIndex] as 'pending' | 'in-progress' | 'completed' | 'cancelled',
+      status: statuses[statusIndex] as 'WAPPR' | 'INPRG' | 'COMP' | 'APPR' | 'REJECT',
       scheduledDate: scheduledDate.toISOString(),
       estimatedHours: ticketTypes[ticketIndex].hours,
       priority: ticketTypes[ticketIndex].priority as 'low' | 'normal' | 'high' | 'urgent',

@@ -92,23 +92,28 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
 
   // 工單狀態配置
   const statusConfig = {
-    pending: {
+    WAPPR: {
       label: '等待中',
       color: 'bg-yellow-100 text-yellow-800',
       badgeVariant: 'outline' as const
     },
-    'in-progress': {
+    INPRG: {
       label: '進行中',
       color: 'bg-blue-100 text-blue-800',
       badgeVariant: 'secondary' as const
     },
-    completed: {
+    COMP: {
       label: '已完成',
       color: 'bg-green-100 text-green-800',
       badgeVariant: 'default' as const
     },
-    cancelled: {
-      label: '已取消',
+    APPR: {
+      label: '已批准',
+      color: 'bg-green-100 text-green-800',
+      badgeVariant: 'default' as const
+    },
+    REJECT: {
+      label: '已拒絕',
       color: 'bg-red-100 text-red-800',
       badgeVariant: 'destructive' as const
     }
@@ -292,7 +297,7 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
         <div className="flex justify-end space-x-2">
           <Button variant="outline" size="sm">檢視詳情</Button>
           <Button variant="outline" size="sm">編輯工單</Button>
-          {ticket.status !== 'completed' && ticket.status !== 'cancelled' && (
+          {ticket.status !== 'COMP' && ticket.status !== 'REJECT' && (
             <Button size="sm">標記為完成</Button>
           )}
         </div>

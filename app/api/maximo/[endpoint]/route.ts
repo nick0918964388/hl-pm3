@@ -6,7 +6,7 @@ const REAL_API_BASE_URL = process.env.REAL_API_BASE_URL || 'http://hl.webtw.xyz/
 export async function POST(
   request: Request,
   { params }: { params: { endpoint: string } }
-): Promise<Response> {
+) {
   try {
     const { endpoint } = params;
     const requestBody = await request.json();

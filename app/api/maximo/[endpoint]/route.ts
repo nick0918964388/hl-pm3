@@ -4,11 +4,11 @@ import { NextRequest, NextResponse } from 'next/server';
 const REAL_API_BASE_URL = process.env.REAL_API_BASE_URL || 'http://hl.webtw.xyz/maximo/oslc/script';
 
 export async function POST(
-  request: NextRequest,
-  context: { params: { endpoint: string } }
-): Promise<NextResponse> {
+  request: Request,
+  { params }: { params: { endpoint: string } }
+): Promise<Response> {
   try {
-    const { endpoint } = context.params;
+    const { endpoint } = params;
     const requestBody = await request.json();
     const maxauth = request.headers.get('maxauth') || '';
 

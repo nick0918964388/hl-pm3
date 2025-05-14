@@ -64,44 +64,64 @@ export function TurbineManagement({ project }: TurbineManagementProps) {
     loadTurbines()
   }, [project.id, toast])
 
-  const handleAddTurbine = async (data: Turbine) => {
+  const handleAddTurbine = async (data: { code: string; name: string; location: { x: number; y: number; }; id: string }) => {
     try {
-      const newTurbine = await createTurbine(project.id, data)
-      setTurbines([...turbines, newTurbine])
-      setIsAddDialogOpen(false)
+      // 擴展數據以符合 Turbine 類型要求
+      const turbineData: Turbine = {
+        ...data,
+        status: 'normal', // 設定默認狀態
+        displayName: data.name, // 可選項，使用 name 作為 displayName
+        coordinates: undefined, // 可選項，初始值為 undefined
+        rpm: 0, // 可選項，初始值為 0
+        power: 0, // 可選項，初始值為 0
+        maintenanceTickets: 0, // 可選項，初始值為 0
+        groupId: undefined, // 可選項，初始值為 undefined
+      };
+      
+      const newTurbine = await createTurbine(project.id, turbineData);
+      setTurbines([...turbines, newTurbine]);
+      setIsAddDialogOpen(false);
       toast({
         title: "Success",
         description: "Turbine created successfully",
-      })
+      });
     } catch (error) {
-      console.error("Failed to create turbine:", error)
+      console.error("Failed to create turbine:", error);
       toast({
         title: "Error",
         description: "Unable to create turbine, please try again later",
         variant: "destructive",
-      })
+      });
     }
   }
 
-  const handleEditTurbine = async (data: Turbine) => {
+  const handleEditTurbine = async (data: { code: string; name: string; location: { x: number; y: number; }; id: string }) => {
     if (!selectedTurbine) return
 
     try {
-      const updatedTurbine = await updateTurbine(project.id, data)
-      setTurbines(turbines.map((turbine) => (turbine.id === selectedTurbine.id ? updatedTurbine : turbine)))
-      setIsEditDialogOpen(false)
-      setSelectedTurbine(null)
+      // 合併現有 turbine 數據與表單提交的數據
+      const turbineData: Turbine = {
+        ...selectedTurbine, // 保留現有 turbine 的所有屬性
+        ...data, // 使用表單提交的更新數據覆蓋基本屬性
+        // 確保 status 存在，如果不存在則使用默認值
+        status: selectedTurbine.status || 'normal',
+      };
+      
+      const updatedTurbine = await updateTurbine(project.id, turbineData);
+      setTurbines(turbines.map((turbine) => (turbine.id === selectedTurbine.id ? updatedTurbine : turbine)));
+      setIsEditDialogOpen(false);
+      setSelectedTurbine(null);
       toast({
         title: "Success",
         description: "Turbine updated successfully",
-      })
+      });
     } catch (error) {
-      console.error("Failed to update turbine:", error)
+      console.error("Failed to update turbine:", error);
       toast({
         title: "Error",
         description: "Unable to update turbine, please try again later",
         variant: "destructive",
-      })
+      });
     }
   }
 

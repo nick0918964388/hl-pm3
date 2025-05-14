@@ -36,13 +36,6 @@ import { Badge } from '@/components/ui/badge'
 import { format, isValid } from 'date-fns'
 import { Card, CardContent } from '@/components/ui/card'
 
-// 擴展RowData接口以支持展開/折疊列
-declare module '@tanstack/react-table' {
-  interface RowData {
-    getToggleExpandedHandler: () => void
-  }
-}
-
 interface TurbineMaintenanceTableProps {
   turbineId: string
   turbineCode: string
@@ -152,7 +145,7 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
         return (
           <Button
             variant="ghost"
-            onClick={row.getToggleExpandedHandler()}
+            onClick={() => row.toggleExpanded()}
             className="p-0 h-8 w-8"
           >
             {row.getIsExpanded() ? (
@@ -203,7 +196,7 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
       cell: ({ row }) => {
         try {
           const rawDate = row.getValue('scheduledDate');
-          const date = rawDate ? new Date(rawDate) : null;
+          const date = rawDate && typeof rawDate === 'string' ? new Date(rawDate) : null;
           const hours = row.original.estimatedHours;
           
           return (
@@ -259,7 +252,10 @@ export function TurbineMaintenanceTable({ turbineId, turbineCode }: TurbineMaint
     // 安全地格式化日期
     const formatScheduledDate = () => {
       try {
-        const date = ticket.scheduledDate ? new Date(ticket.scheduledDate) : null;
+        // 增加類型檢查，確保 scheduledDate 是字符串
+        const date = ticket.scheduledDate && typeof ticket.scheduledDate === 'string' 
+          ? new Date(ticket.scheduledDate) 
+          : null;
         return date && isValid(date) ? format(date, 'yyyy-MM-dd') : '日期未設定';
       } catch (error) {
         return '日期格式錯誤';

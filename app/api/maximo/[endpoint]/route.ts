@@ -5,10 +5,10 @@ const REAL_API_BASE_URL = process.env.REAL_API_BASE_URL || 'http://hl.webtw.xyz/
 
 export async function POST(
   request: Request,
-  { params }: { params: { endpoint: string } }
+  { params }: { params: Promise<{ endpoint: string }> }
 ) {
   try {
-    const { endpoint } = params;
+    const { endpoint } = await params;
     const requestBody = await request.json();
     const maxauth = request.headers.get('maxauth') || '';
 

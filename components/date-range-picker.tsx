@@ -15,6 +15,10 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePickerProps) {
+  const handleSelect = (value: DateRange | undefined) => {
+    onDateRangeChange(value || null)
+  }
+
   return (
     <div className="grid gap-2">
       <Popover>
@@ -47,8 +51,8 @@ export function DateRangePicker({ dateRange, onDateRangeChange }: DateRangePicke
             initialFocus
             mode="range"
             defaultMonth={dateRange?.from}
-            selected={dateRange}
-            onSelect={onDateRangeChange}
+            selected={dateRange || undefined}
+            onSelect={handleSelect}
             numberOfMonths={2}
             locale={zhTW}
           />

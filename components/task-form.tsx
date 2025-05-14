@@ -21,7 +21,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TaskTypeSettings, type TaskTypeWithColor } from "@/components/task-type-settings"
 import { fetchProject, createTask, updateTask, fetchTaskTypes } from "@/lib/api"
 
-const taskSchema = z.object({
+// 導出 taskSchema 以供其他組件使用
+export const taskSchema = z.object({
   name: z.string().min(1, { message: "Task name cannot be empty" }),
   description: z.string().min(1, { message: "Task description cannot be empty" }),
   startDate: z.date({ required_error: "Please select a start date" }),
@@ -31,7 +32,7 @@ const taskSchema = z.object({
   }),
   type: z.string().min(1, { message: "Please select a type" }),
   turbineIds: z.array(z.string()).min(1, { message: "Please select at least one turbine" }),
-})
+});
 
 interface TaskFormProps {
   projectId: string
@@ -160,29 +161,69 @@ export function TaskForm({ projectId, task, turbines, onSubmit, onCancel }: Task
   }, [projectStartDate, form, task])
 
   const handleFormSubmit = (data: z.infer<typeof taskSchema>) => {
-    // Get end date
-    const endDate = format(data.endDate, "yyyy-MM-dd");
+    // Get end date format
+    const endDateStr = format(data.endDate, "yyyy-MM-dd");
     
     // If there's a project start date, use it as the task start date
     // Otherwise use the end date as the start date
-    const startDate = projectStartDate 
+    const startDateStr = projectStartDate 
       ? format(projectStartDate, "yyyy-MM-dd")
-      : endDate;
+      : endDateStr;
     
+    // 只傳遞符合 schema 的數據，其他數據由外部處理
     onSubmit({
       ...data,
-      projectId,
-      id: task?.id || `task-${Date.now()}`,
-      startDate: startDate,
-      endDate: endDate,
+      startDate: data.startDate,
+      endDate: data.endDate,
     })
   }
 
   // Reload task types when task type settings dialog is closed
   const handleTaskTypeSettingsClose = () => {
     setShowTaskTypeSettings(false)
-    const customTypes = getCustomTaskTypes()
-    setTaskTypes([...defaultTaskTypes, ...customTypes])
+    // 移除對未定義函數和變數的引用，直接重新載入任務類型
+    const loadTaskTypes = async () => {
+      try {
+        const typesData = await fetchTaskTypes()
+        
+        // 處理任務類型數據，添加顏色屬性
+        const savedColors = localStorage.getItem("taskTypeColors")
+        const colorMap = savedColors ? JSON.parse(savedColors) : {}
+        
+        // 默認顏色映射
+        const defaultColors: {[key: string]: string} = {
+          "foundation": "red",
+          "piles": "yellow",
+          "jacket": "blue",
+          "wtg": "green",
+          "cables": "purple",
+          "operation": "gray"
+        }
+        
+        const processedTypes = typesData.map(type => ({
+          ...type,
+          color: colorMap[type.value] || defaultColors[type.value] || "gray",
+          isDefault: ["foundation", "piles", "jacket", "wtg", "cables", "operation"].includes(type.value)
+        })) as TaskTypeWithColor[]
+        
+        setTaskTypes(processedTypes)
+      } catch (error) {
+        console.error("Failed to reload task types:", error)
+        
+        // 如果API調用失敗，使用默認類型
+        const defaultTaskTypes: TaskTypeWithColor[] = [
+          { value: "foundation", label: "Seabed Leveling", color: "red", isDefault: true },
+          { value: "piles", label: "Pile Foundation Installation", color: "yellow", isDefault: true },
+          { value: "jacket", label: "Jacket Installation", color: "blue", isDefault: true },
+          { value: "wtg", label: "Wind Turbine Installation", color: "green", isDefault: true },
+          { value: "cables", label: "Cable Laying", color: "purple", isDefault: true },
+          { value: "operation", label: "Operation & Maintenance", color: "gray", isDefault: true },
+        ]
+        setTaskTypes(defaultTaskTypes)
+      }
+    }
+    
+    loadTaskTypes()
   }
 
   return (

@@ -15,12 +15,13 @@ const turbineSchema = z.object({
     x: z.coerce.number(),
     y: z.coerce.number(),
   }),
+  id: z.string().optional(),
 })
 
 interface TurbineFormProps {
   projectId: string
   turbine?: Turbine
-  onSubmit: (data: z.infer<typeof turbineSchema>) => void
+  onSubmit: (data: z.infer<typeof turbineSchema> & { id: string }) => void
   onCancel: () => void
 }
 

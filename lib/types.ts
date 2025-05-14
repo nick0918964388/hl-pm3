@@ -14,7 +14,7 @@ export interface Task {
   startDate: string
   endDate: string
   status: "pending" | "in-progress" | "completed"
-  type: "foundation" | "piles" | "jacket" | "wtg" | "cables" | "operation"
+  type: string
   turbineIds: string[]
 }
 

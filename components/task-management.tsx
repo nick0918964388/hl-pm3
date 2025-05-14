@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { enUS } from "date-fns/locale"
 import { Plus, Pencil, Trash2, AlertCircle, Filter, Settings } from "lucide-react"
+import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,6 +35,7 @@ import { TaskTypeSettings, type TaskTypeWithColor } from "@/components/task-type
 import type { Project, Task, Turbine } from "@/lib/types"
 import { fetchTasks, fetchTurbines, createTask, updateTask, deleteTask, fetchTaskTypes } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { taskSchema } from "@/components/task-form"
 
 interface TaskManagementProps {
   project: Project
@@ -142,44 +144,64 @@ export function TaskManagement({ project }: TaskManagementProps) {
     }
   }, [project.id, toast])
 
-  const handleAddTask = async (data: Task) => {
+  const handleAddTask = async (data: z.infer<typeof taskSchema>) => {
     try {
-      const newTask = await createTask(data)
-      setTasks([...tasks, newTask])
-      setIsAddDialogOpen(false)
+      // 將表單數據擴展為完整的 Task 類型
+      const taskData: Task = {
+        ...data,
+        id: `task-${Date.now()}`,
+        projectId: project.id,
+        // 確保日期是字符串格式，符合 Task 類型定義
+        startDate: data.startDate instanceof Date ? format(data.startDate, "yyyy-MM-dd") : data.startDate,
+        endDate: data.endDate instanceof Date ? format(data.endDate, "yyyy-MM-dd") : data.endDate,
+      };
+      
+      const newTask = await createTask(taskData);
+      setTasks([...tasks, newTask]);
+      setIsAddDialogOpen(false);
       toast({
         title: "Success",
         description: "Task created successfully",
-      })
+      });
     } catch (error) {
-      console.error("Failed to create task:", error)
+      console.error("Failed to create task:", error);
       toast({
         title: "Error",
         description: "Unable to create task. Please try again later.",
         variant: "destructive",
-      })
+      });
     }
   }
 
-  const handleEditTask = async (data: Task) => {
+  const handleEditTask = async (data: z.infer<typeof taskSchema>) => {
     if (!selectedTask) return
 
     try {
-      const updatedTask = await updateTask(data)
-      setTasks(tasks.map((task) => (task.id === selectedTask.id ? updatedTask : task)))
-      setIsEditDialogOpen(false)
-      setSelectedTask(null)
+      // 將表單數據擴展為完整的 Task 類型，保留原有 task 的 id 和 projectId
+      const taskData: Task = {
+        ...data,
+        id: selectedTask.id,
+        projectId: selectedTask.projectId,
+        // 確保日期是字符串格式，符合 Task 類型定義
+        startDate: data.startDate instanceof Date ? format(data.startDate, "yyyy-MM-dd") : data.startDate,
+        endDate: data.endDate instanceof Date ? format(data.endDate, "yyyy-MM-dd") : data.endDate,
+      };
+      
+      const updatedTask = await updateTask(taskData);
+      setTasks(tasks.map((task) => (task.id === selectedTask.id ? updatedTask : task)));
+      setIsEditDialogOpen(false);
+      setSelectedTask(null);
       toast({
         title: "Success",
         description: "Task updated successfully",
-      })
+      });
     } catch (error) {
-      console.error("Failed to update task:", error)
+      console.error("Failed to update task:", error);
       toast({
         title: "Error",
         description: "Unable to update task. Please try again later.",
         variant: "destructive",
-      })
+      });
     }
   }
 
